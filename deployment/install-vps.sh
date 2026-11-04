@@ -30,7 +30,9 @@ find "$APP/sistema/.private" -type f -exec chmod 600 {} +
 find "$APP/sistema/.private" -type d -exec chmod 700 {} +
 mkdir -p "$APP/exportaciones"
 chown kaggle-ia:kaggle-ia "$APP/exportaciones"
-chmod 600 "$APP/sistema/"kaggle\(*\).json
+for credential in "$APP"/sistema/kaggle\(*\).json; do
+    [[ ! -f "$credential" ]] || chmod 600 "$credential"
+done
 chown kaggle-ia-web:kaggle-ia-web /var/lib/kaggle-ia-web
 "$APP/tools/caddy" validate --config /etc/kaggle-ia/Caddyfile --adapter caddyfile
 systemctl daemon-reload
