@@ -11,24 +11,24 @@ def expected_artifact(profile):
     if not filename.endswith('.gguf') or PurePosixPath(filename).is_absolute() or '..' in PurePosixPath(filename).parts or '\\' in filename:raise ValueError('Archivo de pesos inválido.')
     r=requests.get('https://huggingface.co/api/models/'+profile['repo']+'/revision/'+profile['revision'],params={'blobs':'true'},timeout=30)
     r.raise_for_status();d=r.json()
-    if d.get('sha')!=profile['revision']:raise ValueError('La revisiÃ³n de pesos no coincide.')
+    if d.get('sha')!=profile['revision']:raise ValueError('La revisión de pesos no coincide.')
     f=next((f for f in d.get('siblings',[]) if f.get('rfilename')==profile['filename']),None)
-    if not f or not isinstance(f.get('size'),int) or not 0<f['size']<=MAX_CACHE_BYTES:raise ValueError('Este archivo no cabe con margen en la salida de cachÃ© CPU (mÃ¡ximo18GiB).')
+    if not f or not isinstance(f.get('size'),int) or not 0<f['size']<=MAX_CACHE_BYTES:raise ValueError('Este archivo no cabe con margen en la salida de caché CPU (máximo18GiB).')
     sha=f.get('lfs',{}).get('sha256')
     if not isinstance(sha,str) or not re.fullmatch('[a-f0-9]{64}',sha):raise ValueError('No hay un SHA256 verificable para estos pesos.')
     return {k:profile[k] for k in ('repo','revision','filename')}|{'size_bytes':f['size'],'sha256':sha,'schema':1}
 
 def validate_manifest(manifest,expected):
-    if not isinstance(manifest,dict) or any(manifest.get(k)!=v for k,v in expected.items()):raise ValueError('La cachÃ© no corresponde al modelo, revisiÃ³n o integridad esperados.')
+    if not isinstance(manifest,dict) or any(manifest.get(k)!=v for k,v in expected.items()):raise ValueError('La caché no corresponde al modelo, revisión o integridad esperados.')
     return manifest
 
 def source_for(profile):
     value=profile.get('cache_source')
     if not isinstance(value,dict):return None
     owner=profile['kernel_ref'].split('/')[0]
-    if not re.fullmatch(re.escape(owner)+r'/ia-weights-cache-[a-f0-9]{12}',value.get('kernel_ref','')):raise ValueError('La cachÃ© debe pertenecer a esta cuenta.')
+    if not re.fullmatch(re.escape(owner)+r'/ia-weights-cache-[a-f0-9]{12}',value.get('kernel_ref','')):raise ValueError('La caché debe pertenecer a esta cuenta.')
     if any(value.get(k)!=profile[k] for k in ('repo','revision','filename')):return None
-    if not re.fullmatch('[a-f0-9]{64}',value.get('sha256','')) or not 0<value.get('size_bytes',0)<=MAX_CACHE_BYTES:raise ValueError('Integridad de cachÃ© invÃ¡lida.')
+    if not re.fullmatch('[a-f0-9]{64}',value.get('sha256','')) or not 0<value.get('size_bytes',0)<=MAX_CACHE_BYTES:raise ValueError('Integridad de caché inválida.')
     return value
 
 def prepare(profile,key,base):
@@ -80,12 +80,12 @@ def status(profile,key,base,client,attach=False):
         (manifest_dir/'manifest.json').unlink(missing_ok=True)
         client.kernels_output(info['kernel_ref'],path=str(manifest_dir),file_pattern=r'^manifest\.json$',force=True,quiet=True)
         manifest=manifest_dir/'manifest.json'
-        if not manifest.is_file():raise ValueError('La ejecuciÃ³n CPU terminÃ³, pero falta el manifiesto de integridad.')
+        if not manifest.is_file():raise ValueError('La ejecución CPU terminó, pero falta el manifiesto de integridad.')
         validate_manifest(json.loads(manifest.read_text()),expected)
         result['verified']=True
         if attach:
             profile['cache_source']=expected|{'kernel_ref':info['kernel_ref']};result['attached']=True
-    elif attach:raise ValueError('La cachÃ© todavÃ­a no estÃ¡ completa; no se adjuntÃ³ al arranque.')
+    elif attach:raise ValueError('La caché todavía no está completa; no se adjuntó al arranque.')
     return result
 
 # Self-contained reader embedded in future private GPU notebooks.
@@ -105,7 +105,7 @@ def find_cached_weights(config):
         digest=hashlib.sha256()
         with candidate.open('rb') as stream:
             for chunk in iter(lambda:stream.read(8*1024*1024),b''):digest.update(chunk)
-        if digest.hexdigest()!=source['sha256']:raise RuntimeError('La cachÃ© montada fallÃ³ su verificaciÃ³n SHA256.')
+        if digest.hexdigest()!=source['sha256']:raise RuntimeError('La caché montada falló su verificación SHA256.')
         return str(candidate)
-    raise RuntimeError('Se configurÃ³ una cachÃ©, pero no estÃ¡ montada o no coincide. RevisÃ¡ su estado antes de iniciar otra sesiÃ³n.')
+    raise RuntimeError('Se configuró una caché, pero no está montada o no coincide. Revisá su estado antes de iniciar otra sesión.')
 """
