@@ -1,0 +1,67 @@
+{
+  "selected": "coder2",
+  "profiles": {
+    "rapido": {
+      "model": "cybertiel-coder",
+      "label": "Qwen3.8 27B RVN Heretic · Multilingual MTP - 128k (cuenta 1)",
+      "context": 131072,
+      "temperature": 0.2,
+      "reasoning": true,
+      "effort": "medium",
+      "source": null,
+      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
+      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
+      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "parameters": {
+        "draft_num_predict": 2,
+        "num_batch": 512
+      },
+      "account": 1,
+      "port": 18134,
+      "relay_role": "text",
+      "kernel_ref": "CONFIGURAR_USUARIO/cybertiel-coder-privado-ssh",
+      "kernel_title": "CyberTiel Coder privado SSH",
+      "kernel_dir": "kernel",
+      "provider_id": "kaggle",
+      "paseo_provider": "qwen-kaggle",
+      "provider_label": "Qwen3.8 RVN Heretic Kaggle (cuenta 1)",
+      "idle_minutes": 15,
+      "max_session_minutes": 120,
+      "client_port": 19134,
+      "output_tokens": 8192,
+      "performance_profile": "contexto",
+      "template_id": "qwen38-heretic-rvn"
+    },
+    "coder2": {
+      "model": "qwen38-coder390",
+      "label": "Qwen3.8 27B RVN Heretic · Multilingual MTP - 128k (cuenta 2)",
+      "context": 131072,
+      "temperature": 0.2,
+      "reasoning": true,
+      "effort": "medium",
+      "source": null,
+      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
+      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
+      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "parameters": {
+        "draft_num_predict": 2,
+        "num_batch": 512
+      },
+      "account": 2,
+      "port": 17860,
+      "relay_role": "coding2",
+      "kernel_ref": "CONFIGURAR_USUARIO/qwen-coder390-privado-ssh",
+      "kernel_title": "Qwen Coder390 privado SSH",
+      "kernel_dir": "kernel2",
+      "provider_id": "kaggle2",
+      "paseo_provider": "qwen-coder390",
+      "provider_label": "Qwen3.8 RVN Heretic Kaggle (cuenta 2)",
+      "idle_minutes": 15,
+      "max_session_minutes": 120,
+      "client_port": 19860,
+      "output_tokens": 8192,
+      "performance_profile": "contexto",
+      "template_id": "qwen38-heretic-rvn"
+    }
+  }
+}

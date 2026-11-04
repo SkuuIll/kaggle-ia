@@ -1,0 +1,18 @@
+[Unit]
+Description=Kaggle IA HTTPS gateway
+After=network-online.target kaggle-ia.service
+[Service]
+User=kaggle-ia-web
+Group=kaggle-ia-web
+Environment=HOME=/var/lib/kaggle-ia-web
+ExecStart=/opt/kaggle-ia/tools/caddy run --config /etc/kaggle-ia/Caddyfile --adapter caddyfile
+Restart=on-failure
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/kaggle-ia-web
+[Install]
+WantedBy=multi-user.target

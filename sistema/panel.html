@@ -1,0 +1,202 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard · Kaggle IA</title><link rel="stylesheet" href="/assets/panel.css"></head><body>
+<aside class="sidebar"><a href="#dashboard" class="brand"><span class="mark" data-icon="code"></span><div><span>Kaggle IA</span><small class="brand-sub">Tesla T4 ×2 · Relay SSH</small></div></a><div class="nav-label">ESPACIO DE TRABAJO</div><nav class="nav" aria-label="Navegación principal"><button data-page="dashboard" onclick="navigate('dashboard')" aria-current="page"><i data-icon="grid"></i>Dashboard</button><button data-page="chat" onclick="navigate('chat')"><i data-icon="chat"></i>Chat IA<span class="nav-count" id="chat-count">0</span></button><button data-page="cuentas" onclick="navigate('cuentas')"><i data-icon="users"></i>Cuentas<span class="nav-count" id="account-count">—</span></button><button data-page="modelos" onclick="navigate('modelos')"><i data-icon="cpu"></i>Modelos &amp; TPS</button><button data-page="plantillas" onclick="navigate('plantillas')"><i data-icon="layers"></i>Plantillas</button><button data-page="actividad" onclick="navigate('actividad')"><i data-icon="activity"></i>Actividad</button><button data-page="configuracion" onclick="navigate('configuracion')"><i data-icon="settings"></i>Configuración</button></nav><div class="sidebar-foot"><button class="cmd-trigger" onclick="openPalette()" title="Atajo Ctrl+K"><i data-icon="search"></i><span>Acciones rápidas</span><kbd>Ctrl K</kbd></button><div class="server"><i class="dot" id="server-dot"></i><span id="server-status">Conectando al panel</span></div><small>FlashAttention · KV Q8_0 · SSH</small></div></aside>
+<div class="layout"><header class="topbar"><div class="breadcrumb">Workspace <span>/</span><b id="breadcrumb">Dashboard</b></div><div class="top-actions"><button class="quiet top-shortcut" data-hide-on="chat" onclick="navigate('chat')"><i data-icon="chat"></i>Abrir Chat</button><button class="quiet top-shortcut" onclick="navigate('modelos')"><i data-icon="cpu"></i>Optimizar TPS</button><button class="quiet top-shortcut" onclick="openPalette()"><i data-icon="search"></i>Comandos <kbd>Ctrl+K</kbd></button><span class="sync" id="last-sync">Consultando Kaggle…</span><button class="icon-btn" onclick="refreshNow()" aria-label="Actualizar estado de Kaggle" title="Consultar estado ahora"><i data-icon="refresh"></i></button><div class="user"><span class="avatar" id="avatar">IA</span><span class="user-name"><span id="session-user">Mi espacio</span><small>Administrador</small></span></div><button id="logout-button" class="icon-btn" hidden onclick="logout()" aria-label="Cerrar sesión" title="Cerrar sesión no apaga las GPU"><i data-icon="logout"></i></button></div></header>
+<main><div class="page-head"><div><div class="eyebrow" id="page-eyebrow">RESUMEN DEL ESPACIO</div><h1 id="page-title">Dashboard</h1><p id="page-description" class="subtitle">Tus modelos, sesiones y consumo, de un vistazo.</p></div><div class="page-actions"><button class="operation" data-hide-on="chat" onclick="navigate('chat')"><i data-icon="chat"></i>Chatear con IA</button><button class="danger operation" data-stop="true" onclick="stopAll()"><i data-icon="stop"></i>Apagar todas</button><button class="primary operation" onclick="openAccount()"><i data-icon="plus"></i>Agregar cuenta</button></div></div>
+<div id="banner" class="banner" role="status"><i data-icon="shield"></i><span id="banner-text">Consultando el estado real de las cuentas en Kaggle…</span><div class="buttons"><button class="quiet" data-hide-on="chat" onclick="navigate('chat')">Ir al Chat →</button><button class="quiet" onclick="navigate('actividad')">Ver actividad →</button></div></div>
+
+<section data-view="dashboard">
+<div id="workflow-stepper" class="workflow-bar" aria-label="Flujo de trabajo rápido"></div>
+<div class="toolbar"><span class="small muted">Resumen de uso y telemetría</span><label class="sr-only" for="dashboard-filter">Filtrar métricas por cuenta</label><select id="dashboard-filter" class="filter" onchange="renderDashboard()"><option value="all">Todas las cuentas</option></select></div>
+<div class="kpis"><article class="kpi"><div class="kpi-head">Sesiones activas<i data-icon="cpu"></i></div><strong id="kpi-active">—</strong><div class="caption" id="kpi-active-note">Estado oficial de Kaggle</div></article><article class="kpi"><div class="kpi-head">Horas disponibles<i data-icon="clock"></i></div><strong id="kpi-hours">—</strong><div class="caption" id="kpi-hours-note">Cuota oficial disponible</div></article><article class="kpi"><div class="kpi-head">Tokens medidos<i data-icon="activity"></i></div><strong id="kpi-tokens">—</strong><div class="caption">Entrada + salida · historial registrado</div></article><article class="kpi"><div class="kpi-head">Solicitudes<i data-icon="code"></i></div><strong id="kpi-requests">—</strong><div class="caption" id="kpi-requests-note">A través de la conexión medida</div></article></div>
+<div class="split"><article class="panel"><div class="panel-title"><div><h2>Actividad de tokens</h2><p>Últimos 7 días · agrupación por día UTC</p></div><div class="legend"><span><i></i>Entrada</span><span><i class="out"></i>Salida</span></div></div><div id="usage-chart" class="chart"></div><p class="hint" id="chart-note"></p></article><article class="panel"><div class="panel-title"><div><h2>Cuota de GPU</h2><p>Consumo informado por Kaggle</p></div><i data-icon="clock"></i></div><div id="quota-list"></div><p class="hint">Las reservas reducen las horas disponibles. La cuota puede variar.</p></article></div>
+<div class="section-heading"><div><h2>Tus modelos y conexiones</h2><p class="hint" style="margin-top:2px">Iniciá la GPU, cambiá a un modelo de alto TPS, diagnosticá el túnel o abrí el Chat desde cada tarjeta.</p></div><div class="buttons"><button class="quiet" onclick="navigate('modelos')">Comparar TPS y GPUs →</button><button class="quiet" onclick="navigate('cuentas')">Administrar cuentas →</button></div></div><div id="model-cards" class="cards"></div>
+<article class="panel" style="margin-top:22px"><div class="panel-title"><div><h2>Actividad reciente</h2><p>Operaciones realizadas desde este panel</p></div><button class="quiet" onclick="navigate('actividad')">Ver todo →</button></div><div id="recent-events"></div></article><p class="footnote">Los tokens incluyen solo solicitudes que pasan por el proxy medido. Las conversaciones del Chat Web se guardan en privado dentro del servidor y nunca se incluyen en exportaciones públicas. Configurar un contexto no garantiza que entre en la VRAM asignada.</p></section>
+
+<section data-view="chat" hidden>
+<div class="chat-workspace" id="chat-dropzone">
+  <div class="chat-drop-overlay" id="chat-drop-overlay" hidden>
+    <div class="chat-drop-box">
+      <i data-icon="upload"></i>
+      <h3>Soltá tus archivos para adjuntarlos al chat</h3>
+      <p>Documentos (PDF, Word, Excel, PowerPoint, código, texto), fotos (PNG, JPG, WEBP, GIF), videos (MP4, WEBM, MOV) y audio (MP3, WAV, OGG) · hasta 15 MB por archivo.</p>
+    </div>
+  </div>
+  <aside class="chat-sidebar panel">
+    <div class="chat-sidebar-top">
+      <button class="primary chat-new-btn" onclick="createChatConversation()"><i data-icon="plus"></i>Nueva conversación</button>
+      <div class="field" style="margin-bottom:10px">
+        <label for="chat-account">Conexión y modelo activo</label>
+        <select id="chat-account" onchange="changeChatAccount(this.value)"></select>
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <label for="chat-workflow-preset">Modo / flujo de trabajo</label>
+        <select id="chat-workflow-preset" onchange="applyChatWorkflowPreset(this.value)">
+          <option value="">Conversación libre (sin plantilla fija)</option>
+          <option value="analisis-archivos">Analista de documentos, fotos y medios</option>
+          <option value="bugfix">Corrección de bug paso a paso</option>
+          <option value="cambio-controlado">Cambio controlado en proyecto</option>
+          <option value="proyecto-nuevo">Diseño de proyecto desde cero</option>
+          <option value="revision">Revisión técnica antes de entregar</option>
+        </select>
+      </div>
+      <input id="chat-search" aria-label="Buscar conversaciones" class="search" style="max-width:100%" placeholder="Buscar conversación…" oninput="renderChatList()">
+    </div>
+    <div id="chat-list" class="chat-conv-list" role="list" aria-label="Conversaciones guardadas"></div>
+  </aside>
+
+  <div class="chat-main panel">
+    <header class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-title-row">
+          <h2 id="chat-active-title">Nueva conversación</h2>
+          <span id="chat-gpu-pill" class="badge">Consultando GPU…</span>
+        </div>
+        <p id="chat-active-subtitle" class="hint">Seleccioná una cuenta o escribí un mensaje para empezar.</p>
+      </div>
+      <div class="chat-header-actions">
+        <button id="chat-quick-start" class="primary operation" onclick="startChatAccount()" hidden><i data-icon="play"></i>Encender GPU</button>
+        <button id="chat-quick-diagnose" onclick="diagnoseChatAccount()" title="Comprobar Kaggle, API y modelo en memoria"><i data-icon="shield"></i>Diagnosticar</button>
+        <button onclick="toggleChatSettings()" id="chat-settings-btn" title="Instrucción de sistema y parámetros"><i data-icon="settings"></i>Ajustes</button>
+        <button onclick="renameChatConversation()" title="Cambiar título"><i data-icon="edit"></i>Renombrar</button>
+        <button onclick="downloadChatMarkdown()" title="Descargar transcripción en Markdown"><i data-icon="download"></i>.MD</button>
+        <button onclick="exportChatZip()" title="Descargar ZIP con conversación y archivos adjuntos"><i data-icon="download"></i>ZIP completo</button>
+        <button class="danger" onclick="deleteChatConversation()" title="Archivar conversación" aria-label="Archivar conversación"><i data-icon="trash"></i></button>
+      </div>
+    </header>
+
+    <div id="chat-settings-drawer" class="chat-drawer" hidden><details style="margin:12px 0"><summary>Almacenamiento y recuperación</summary><p id="chat-storage-status" class="hint" role="status">Consultando uso del chat…</p><div class="form-grid"><div class="field"><label for="chat-storage-mb">Cuota total del chat (MB)</label><input id="chat-storage-mb" type="number" min="64" max="4096" value="512"></div><div class="field"><label for="chat-retention-days">Archivar pendientes tras días</label><input id="chat-retention-days" type="number" min="1" max="365" value="30"></div></div><div class="buttons"><button onclick="saveChatStorage()">Guardar límites</button><button onclick="archiveOldChatUploads()">Archivar pendientes antiguos</button><button onclick="loadChatStorage()">Actualizar</button></div><p class="hint">La retención archiva adjuntos que nunca se enviaron. No borra conversaciones ni archivos. Archivar no libera espacio; la cuota impide nuevas subidas al llenarse.</p><div id="chat-archive-list"></div></details>
+      <div class="field" style="margin-bottom:12px">
+        <label for="chat-system-prompt">Instrucción de sistema (System Prompt)</label>
+        <textarea id="chat-system-prompt" rows="3" placeholder="Indicá cómo querés que responda el modelo (idioma, rol, formato, reglas)…"></textarea>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="field" style="margin-bottom:0">
+          <label for="chat-temperature">Temperatura (0.0 a 1.5)</label>
+          <input id="chat-temperature" type="number" step="0.05" min="0" max="1.5" value="0.2">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="chat-max-tokens">Máximo de tokens de respuesta</label>
+          <input id="chat-max-tokens" type="number" step="256" min="256" max="32768" value="4096">
+        </div>
+      </div>
+      <div class="buttons">
+        <button class="primary" onclick="saveChatSettings()"><i data-icon="check"></i>Guardar ajustes en esta conversación</button>
+        <button class="quiet" onclick="toggleChatSettings()">Cerrar</button>
+      </div>
+    </div>
+
+    <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
+
+    <p id="chat-context-status" class="hint" role="status"></p><div id="chat-pending-files" class="chat-pending-files" hidden></div>
+
+    <footer class="chat-composer">
+      <div class="chat-attach-bar">
+        <input id="chat-file-all" type="file" multiple hidden onchange="handleChatFiles(this.files);this.value=''">
+        <input id="chat-file-image" type="file" accept="image/*" multiple hidden onchange="handleChatFiles(this.files);this.value=''">
+        <input id="chat-file-media" type="file" accept="video/*,audio/*" multiple hidden onchange="handleChatFiles(this.files);this.value=''">
+        <button type="button" onclick="el('chat-file-all').click()" title="Subir PDF, Word, Excel, PowerPoint, código, CSV, JSON o cualquier archivo"><i data-icon="paperclip"></i>Documento / Código</button>
+        <button type="button" onclick="el('chat-file-image').click()" title="Subir fotos o capturas PNG, JPG, WEBP, GIF"><i data-icon="image"></i>Foto / Imagen</button>
+        <button type="button" onclick="el('chat-file-media').click()" title="Subir video MP4/WEBM o audio MP3/WAV"><i data-icon="video"></i>Video / Audio</button>
+        <span class="chat-attach-hint" id="chat-upload-status">Arrastrá archivos acá · PDF, Office, código, fotos, videos y audio (máx. 15 MB c/u)</span>
+      </div>
+      <div class="chat-input-row">
+        <textarea aria-label="Mensaje para la IA" id="chat-input" rows="2" placeholder="Escribí tu mensaje, pegá código o adjuntá archivos… (Enter para enviar, Shift+Enter para salto de línea)" onkeydown="handleChatKey(event)"></textarea>
+        <div class="chat-send-actions">
+          <button id="chat-cancel-btn" type="button" class="danger" hidden onclick="cancelChatGeneration()"><i data-icon="stop"></i>Detener</button>
+          <button id="chat-send-btn" type="button" class="primary" onclick="sendChatMessage()"><i data-icon="send"></i>Enviar</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+</div>
+</section>
+
+<section data-view="cuentas" hidden><article class="panel"><div class="toolbar"><div><h2>Cuentas conectadas</h2><p class="hint">Dos conexiones disponibles. Una sola sesión GPU a la vez.</p></div><label class="sr-only" for="account-search">Buscar cuenta</label><input id="account-search" class="search" placeholder="Buscar por nombre o usuario…" oninput="renderAccounts()"></div><div class="table-wrap" tabindex="0" role="region" aria-label="Cuentas conectadas"><table><thead><tr><th>Cuenta</th><th>Estado</th><th>Modelo</th><th>Disponible</th><th style="text-align:right">Acciones</th></tr></thead><tbody id="account-rows"></tbody></table></div><div id="accounts-empty" class="empty" hidden><b>Tu espacio está listo para una cuenta.</b>Agregá un kaggle.json o un token KGAT_. Guardarlo no inicia una GPU.<br><button class="primary operation" style="margin-top:15px" onclick="openAccount()">Agregar cuenta</button></div></article><div class="notice">Quitar cuenta confirma primero la parada y archiva la credencial en privado para recuperación. La cuenta de Kaggle se conserva.</div><article class="panel"><h2>Conectar una cuenta</h2><p class="small muted">1. Agregá la API · 2. Elegí el modelo · 3. Encendé y esperá la confirmación.<br>Al terminar, usá Apagar y verificá el resultado en Actividad.</p><a class="small" href="https://www.kaggle.com/settings" target="_blank" rel="noreferrer">Abrir configuración de Kaggle ↗</a></article></section>
+
+<section data-view="modelos" hidden>
+<div class="models-layout">
+  <div class="models-col">
+    <article class="panel">
+      <div class="panel-title">
+        <div>
+          <h2>Modelo Único Activo · Qwen3.8 27B RVN Heretic (Multilingual MTP)</h2>
+          <p>Instalado y unificado en Cuenta 1 y Cuenta 2 (128k activos / 262k nativos · 0bserverx RVN-Q4_K_M-multilingual-mtp.gguf).</p>
+        </div>
+        <span class="badge on"><i data-icon="activity"></i> DeltaNet + MTP ×4 · 128k</span>
+      </div>
+      <div class="field">
+        <label for="model-account">Cuenta de destino</label>
+        <select id="model-account" onchange="loadModel(true)"></select>
+      </div>
+      <div id="model-current" class="notice"></div>
+      <div id="quick-tps-models" class="tps-grid"></div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-title"><div><h2>Repositorio personalizado (Hugging Face GGUF)</h2><p>Los pesos se descargan en Kaggle, nunca en tu PC ni en la VPS.</p></div><i data-icon="cpu"></i></div>
+      <form id="model-form">
+        <div class="field"><label for="model-repo">Repositorio de Hugging Face</label><input id="model-repo" placeholder="https://huggingface.co/autor/modelo-GGUF" required><p class="hint">Repositorio público con un archivo GGUF único.</p></div>
+        <button id="inspect-button" type="button" class="operation" onclick="inspectModel()"><i data-icon="refresh"></i>Buscar archivos GGUF</button>
+        <div id="inspect-result" class="error-text" role="status"></div>
+        <hr>
+        <div class="field"><label for="model-file">Archivo y cuantización</label><select id="model-file" required></select></div>
+        <div class="field"><label for="model-context">Contexto en tokens</label><input id="model-context" type="number" min="4096" max="1048576" required><p class="hint">Un contexto de 16k–32k maximiza los TPS; 128k reserva más VRAM para caché KV.</p></div>
+        <div class="notice">Aplicar detiene el modelo anterior si estaba encendido. Kaggle decide la cola; la descarga se realiza directamente en los servidores de Google/Kaggle.</div>
+        <button type="submit" class="primary operation"><i data-icon="play"></i>Aplicar modelo y arrancar</button>
+      </form>
+    </article>
+  </div>
+
+  <aside class="models-col">
+    <article class="panel">
+      <div class="panel-title"><div><h2>Arquitectura de GPUs en Kaggle y cómo triplicar tus TPS</h2><p>Investigación técnica para NVIDIA Tesla T4 ×2 (Turing sm_75)</p></div><i data-icon="activity"></i></div>
+      <div class="gpu-specs">
+        <div class="spec-box"><small>GPUs asignadas</small><strong>2 × Tesla T4</strong><span>16 GB GDDR6 c/u (32 GB total)</span></div>
+        <div class="spec-box"><small>Ancho de banda</small><strong>320 GB/s</strong><span>Por GPU · Cuello de botella real</span></div>
+        <div class="spec-box"><small>Optimizaciones activas</small><strong>FlashAttn + Q8_0</strong><span>50% menos VRAM en caché KV</span></div>
+      </div>
+      <div class="tps-explain">
+        <h3>1. Abliteración ARA de 3 pasadas (0–1% rechazos · KL ≈ 0.0085)</h3>
+        <p>El modelo <strong>Qwen3.8 27B RVN Heretic</strong> de <code>0bserverx</code> aplica optimización matricial <strong>ARA (Arbitrary-Rank Ablation)</strong> en 3 pasadas completas sobre los pesos base, reduciendo los rechazos al 0–1% sin degradar el razonamiento ni la capacidad de programación.</p>
+        <h3>2. Cabezal MTP embebido (Multi-Token Prediction ×4)</h3>
+        <p>El archivo <code>RVN-Q4_K_M-multilingual-mtp.gguf</code> (17.0 GB) incluye el cabezal oficial MTP/NextN de 15 tensores con <code>draft_num_predict=4</code> activado en ambas cuentas para acelerar la generación en las 2× Tesla T4.</p>
+        <h3>3. 48 capas Gated DeltaNet (-75% de caché KV en 128k–262k)</h3>
+        <p>Gracias a su arquitectura híbrida (48 capas de atención lineal DeltaNet + 16 GQA con <code>OLLAMA_KV_CACHE_TYPE=q8_0</code>), la ventana de <strong>131.072 (128k) tokens</strong> deja <strong>15 GB de VRAM libres</strong> en las dos placas T4.</p>
+      </div>
+    </article>
+  </aside>
+</div>
+</section>
+
+<section data-view="plantillas" hidden><article class="panel"><div class="panel-title"><div><h2>Tu catálogo de IA y Herramientas</h2><p>Modelo único oficial Qwen3.8 27B RVN Heretic · Multilingual MTP (128k), paquetes locales y flujos de trabajo.</p></div><a href="https://huggingface.co/0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF" target="_blank" rel="noreferrer">Repositorio 0bserverx ↗</a></div><div class="template-toolbar"><div class="field"><label for="template-account">Cuenta de destino</label><select id="template-account" onchange="renderTemplates()"></select></div><div class="field"><label for="template-filter">Categoría</label><select id="template-filter" onchange="renderTemplates()"><option value="all">Todo el catálogo</option><option value="models"><i data-icon="check"></i> Modelo IA (Qwen3.8 27B RVN Heretic · 128k)</option><option value="tools">Herramientas y librerías</option><option value="workflows">Instrucciones de trabajo</option></select></div><div class="field"><label for="template-search">Buscar plantilla</label><input id="template-search" placeholder="RVN, Heretic, Aider, HTTPX, código…" oninput="renderTemplates()"></div></div><div class="notice">Instalar una plantilla prepara la configuración y el notebook privado con <code>FlashAttention</code> y caché <code>KV Q8_0</code>. Los pesos se descargan recién al encender.</div><p id="template-result" role="status" class="hint"></p><div id="template-download"></div><div class="buttons" style="margin:16px 0"><button class="primary operation" onclick="startAccount(el('template-account').value)"><i data-icon="play"></i>Encender cuenta elegida</button><button onclick="openChatForAccount(el('template-account').value)"><i data-icon="chat"></i>Abrir en Chat Web</button><button onclick="navigate('configuracion');setting('connection')">Preparar configuración de clientes →</button></div><div id="template-library" class="template-grid"><p>Cargando catálogo…</p></div></article><article class="panel" style="margin-top:22px"><h2>Fuentes y optimizaciones del motor</h2><p class="hint">Componentes integrados en el servidor de inferencia para maximizar los TPS y proteger tus horas de GPU.</p><div id="template-sources" class="template-grid"></div></article></section>
+<section data-view="actividad" hidden><article class="panel" style="margin-bottom:22px"><div class="panel-title"><h2><i id="job-pulse" class="pulse" hidden></i> <span id="jobtitle">Sin operaciones en curso</span></h2><span id="job-duration" class="small muted"></span></div><p id="job-note" class="hint">El inicio y el apagado se confirman contra Kaggle.</p><pre id="progress" class="log" role="log" aria-label="Registro de la operación">Todavía no hay una operación en esta sesión del servidor.</pre><p id="runtime-stage" class="notice" role="status"></p><div id="job-download"></div></article><article class="panel"><div class="panel-title"><div><h2>Historial de operaciones</h2><p>Se conserva al cerrar el navegador o reiniciar el panel.</p></div><label class="sr-only" for="history-filter">Filtrar historial</label><select id="history-filter" class="filter" onchange="renderHistory()"><option value="all">Todos los resultados</option><option value="done">Completadas</option><option value="error">Con errores</option></select></div><div id="operation-history"></div></article></section>
+<section data-view="configuracion" hidden><nav class="subnav" aria-label="Secciones de configuración"><button data-setting="general" aria-selected="true" onclick="setting('general')">General</button><button data-setting="timers" aria-selected="false" onclick="setting('timers')">Autoapagado</button><button data-setting="connection" aria-selected="false" onclick="setting('connection')">Conexión</button><button data-setting="backups" aria-selected="false" onclick="setting('backups')">Respaldos</button><button data-setting="security" aria-selected="false" onclick="setting('security')">Seguridad</button></nav><div class="editor">
+<article class="panel" data-setting-view="general"><h2>Preferencias del espacio</h2><div class="setting-row"><div><h3>Avisos de uso</h3><p>Recibí avisos cuando una GPU sigue activa o queda poca cuota. Requiere dejar el panel abierto.</p></div><button id="notify" onclick="enableNotifications()">Activar avisos</button></div><div class="setting-row"><div><h3>Modo de instalación</h3><p id="installation-mode">Consultando…</p></div><span class="badge good">SSH privado</span></div><div class="setting-row"><div><h3>Uso simultáneo</h3><p>Una sola sesión GPU a la vez. Cambiar de cuenta detiene la anterior antes de iniciar la siguiente.</p></div></div><div class="setting-row"><div><h3>Cuotas y métricas</h3><p>Las horas se consultan en Kaggle. Los tokens son estadísticas del proxy, no otra cuota.</p></div><button class="quiet" onclick="navigate('dashboard')">Ver consumo</button></div></article>
+<article class="panel" data-setting-view="timers" hidden><div class="panel-title"><div><h2>Protegé tus horas de GPU</h2><p>Los cambios se aplican al próximo arranque.</p></div><i data-icon="clock"></i></div><form id="timer-form"><div class="field"><label for="timer-account">Cuenta</label><select id="timer-account" onchange="loadTimers(true)"></select></div><div class="form-grid"><div class="field"><label for="timer-idle">Sin inferencia, en minutos</label><input id="timer-idle" type="number" min="1" max="120" required></div><div class="field"><label for="timer-maximum">Límite de sesión, en minutos</label><input id="timer-maximum" type="number" min="5" max="120" required></div></div><div class="notice">Se ejecuta dentro de Kaggle, aunque cierres el navegador. El límite absoluto puede terminar una generación larga. Los valores nuevos no cambian una sesión ya encendida.</div><button type="submit" class="primary operation">Guardar autoapagado</button></form></article>
+<article class="panel" data-setting-view="connection" hidden><h2>Diagnóstico y ahorro</h2><p class="small muted">Comprobá la conexión sin generar texto ni encender una GPU. Los cambios de rendimiento se aplican al próximo arranque.</p><div class="field"><label for="ops-account">Cuenta para revisar</label><select id="ops-account" onchange="renderOperationControls()"></select></div><div class="buttons"><button onclick="diagnoseAccount()">Diagnosticar conexión</button><button class="primary operation" onclick="prepareWork()">Preparar para trabajar</button><button id="extend-work" class="operation" onclick="extendWork()">Seguir trabajando · +30 min</button></div><p id="ops-result" class="notice" role="status">El diagnóstico revisa Kaggle, la API HTTPS y el modelo cargado. Paseo se comprueba desde tu PC con ABRIR_PASEO.bat.</p><div class="field"><label for="performance-profile">Perfil para el próximo inicio</label><select id="performance-profile"><option value="rapido">Respuesta rápida · 16k contexto / 1k salida</option><option value="codigo">Código · 32k contexto / 4k salida</option><option value="contexto" selected>Contexto largo · 128k contexto / 4k salida</option></select></div><button class="operation" onclick="savePerformanceProfile()">Guardar perfil</button><p class="hint">Un contexto menor puede reducir memoria y procesamiento. La velocidad real depende del modelo, la GPU y el contenido del chat.</p><hr><details style="margin:18px 0"><summary>Preparar pesos con CPU para ahorrar arranques</summary><p class="hint">La cuenta seleccionada arriba prepara un notebook CPU privado. Cuando termine, verificá y adjuntá la caché al próximo arranque. No enciende GPU. Las salidas permanecen en Kaggle; no se descargan los pesos a esta VPS. Disponible para archivos de hasta 18 GiB.</p><div class="buttons"><button class="operation" onclick="cacheAction('cache_launch')">Preparar caché con CPU</button><button class="operation" onclick="cacheAction('cache_status')">Consultar estado</button><button class="operation" onclick="cacheAction('cache_attach')">Verificar y usar caché</button><button class="operation" onclick="cacheAction('cache_detach')">Desactivar caché</button></div><p class="hint">El estado PREPARED indica solamente configuración; COMPLETE con manifiesto verificado permite adjuntarla. Si cambia el modelo o la revisión, se prepara una caché nueva. El diagnóstico del próximo notebook informará GPU, controlador, Python, motor y origen de los pesos.</p></details><h2>Conectar Paseo, OpenCode y Continue</h2><p class="small muted">Los clientes usan las direcciones HTTPS y la clave API de su cuenta. Podés preparar sus configuraciones completas en este apartado.</p><div id="connection-list"></div><hr><h2>Tu configuración, lista para usar</h2><p class="small muted">Elegí la cuenta y prepará sus ejemplos. La clave de la API es distinta de tu contraseña del panel y del token de Kaggle.</p><div class="field"><label for="client-account">Cuenta para los ejemplos</label><select id="client-account" onchange="clearClientConfig()"></select></div><button id="client-prepare" class="primary" onclick="prepareClientConfig()">Preparar configuración privada</button><div id="client-config-area" hidden><div class="notice">La vista oculta la clave. Al usar Copiar configuración o descargar el paquete se incluye la clave real. Guardá estos archivos en privado.</div><div class="field"><label for="client-api-key">Clave API de esta conexión</label><input id="client-api-key" type="password" readonly autocomplete="off"><div class="buttons" style="margin-top:10px"><button id="client-show-key" onclick="toggleClientKey()">Mostrar clave</button><button onclick="copyClientKey()">Copiar clave</button><button onclick="probeClientAPI()">Probar API</button></div></div><p id="client-probe-result" class="hint" role="status"></p><div class="field"><label for="snippet-client">Cliente</label><select id="snippet-client" onchange="renderClientSnippet()"><option value="opencode">OpenCode · opencode.json</option><option value="paseo">Paseo · config.json</option><option value="continue">Continue · config.yaml</option></select></div><pre id="client-snippet" class="log" style="max-height:370px" aria-label="Ejemplo de configuración"></pre><p id="client-snippet-help" class="hint"></p><button onclick="copyClientConfig()">Copiar configuración</button><hr><h2>Configuración automática en Windows</h2><p class="small muted">Descargá y descomprimí el paquete privado. Ejecutá INSTALAR.bat si faltan dependencias y después CONFIGURAR_CLIENTES.bat y ABRIR_PASEO.bat. Se respaldan y combinan tus configuraciones actuales; no se borran tus chats ni se enciende una GPU.</p><a id="client-package" class="download">Descargar paquete privado</a><p class="hint">Paseo usa OpenCode como motor. El instalador resuelve la ruta del ejecutable en tu PC. Si copiás el ejemplo de Paseo a mano, OpenCode debe estar en PATH o tenés que indicar su ruta completa.</p><hr><div class="notice">El autoapagado por inactividad y el límite de sesión pueden detener el modelo. Abrir Paseo no lo enciende automáticamente; revisá su estado en el Dashboard.</div><h2>Si Paseo no conecta</h2><p class="small muted">1. Si la cuenta figura apagada, encendela y esperá LISTO en Actividad.<br>2. Comprobá que el proveedor use la URL HTTPS y su clave.<br>3. Recargá Paseo y abrí un chat nuevo.<br>4. Si dice que el daemon no está iniciado, ejecutá <code>paseo daemon start</code>.</p><p class="hint">El servicio de Paseo puede usar 127.0.0.1:6767 en tu PC: es su conexión con la aplicación. El modelo usa el dominio HTTPS del panel.</p></div><div class="notice">Cerrar el IDE o la conexión SSH no detiene la GPU. Usá los controles de apagado del panel.</div><button id="open-paseo" hidden class="operation" onclick="act('paseo')">Abrir Paseo en esta PC</button></article>
+<article class="panel" data-setting-view="backups" hidden><h2>Respaldos y traslado</h2><div class="setting-row"><div><h3>Código para instalar o publicar</h3><p>Programa y documentación, sin credenciales, registros ni notebooks privados.</p></div><button class="operation" onclick="act('export_program')"><i data-icon="download"></i>Exportar código</button></div><div class="setting-row"><div><h3>Conexión privada</h3><p>Contiene tus APIs y la clave SSH. El ZIP no está cifrado; guardalo como una contraseña.</p></div><button class="operation" onclick="privateBackup()"><i data-icon="shield"></i>Respaldar conexión</button></div><div class="setting-row"><div><h3>Importar una conexión</h3><p>Reemplaza la configuración. Primero deben estar confirmadas las paradas actuales.</p></div><button class="operation" onclick="document.getElementById('restore').click()">Importar ZIP</button><input id="restore" type="file" accept=".zip" hidden onchange="restorePrivate(this)"></div><div id="backup-download"></div><p class="hint">Cuando termine la exportación, podés descargarla acá o en Actividad. Los enlaces requieren tu sesión.</p></article>
+<article class="panel" data-setting-view="security" hidden><h2>Acceso y sesión</h2><div class="setting-row"><div><h3 id="security-username">Tu cuenta del panel</h3><p>Independiente de las APIs de Kaggle. Sesiones de hasta 8 horas.</p></div><span class="badge good">HTTPS</span></div><div class="setting-row"><div><h3>Contraseña</h3><p>Al cambiarla se cierran todas las sesiones. Los modelos continúan funcionando.</p></div><button id="change-password" onclick="openPassword()">Cambiar contraseña</button></div><div class="setting-row"><div><h3>Cerrar sesión</h3><p>Revoca este acceso al panel. No apaga las GPU.</p></div><button id="security-logout" onclick="logout()">Cerrar sesión</button></div></article></div></section>
+</main></div><div id="floating-job" class="floating" hidden><i class="pulse"></i><span id="floating-label">Operación en curso</span><button onclick="navigate('actividad')">Ver progreso →</button></div><div id="toast" class="toast" role="status" hidden></div>
+<dialog id="account-dialog" aria-labelledby="account-dialog-title"><h2 id="account-dialog-title">Agregar cuenta</h2><p class="desc">Validamos la API y reconocemos el usuario sin encender una GPU.</p><div class="segmented"><button id="mode-token" aria-selected="true" onclick="credentialMode('token')">Pegar API</button><button id="mode-json" aria-selected="false" onclick="credentialMode('json')">Cargar kaggle.json</button></div><form id="account-form"><div class="field"><label for="account-name">Nombre para identificarla (opcional)</label><input id="account-name" maxlength="48" placeholder="Por ejemplo, Código principal"></div><div id="credential-token"><div class="field"><label for="account-token">Token o API key</label><input id="account-token" type="password" autocomplete="new-password" maxlength="2048" placeholder="KGAT_…"><p class="hint">Con un KGAT_ detectamos el usuario automáticamente.</p></div><div class="field"><label for="account-username">Usuario (solo para una key legacy)</label><input id="account-username" autocomplete="off" maxlength="64" placeholder="Tu usuario de Kaggle"></div></div><div id="credential-json" class="file-zone" hidden><p class="small muted">Seleccioná el archivo descargado desde Kaggle.</p><input id="account-file" type="file" accept=".json" aria-label="Archivo kaggle.json" onchange="readAccountFile(this)"><p id="credential-file-note" class="hint">La clave no se muestra en pantalla.</p></div><div id="account-error" class="error-text" role="alert"></div><div class="buttons"><button type="button" class="quiet" onclick="closeDialog('account-dialog')">Cancelar</button><button type="submit" class="primary operation">Validar y guardar</button></div></form></dialog>
+<dialog id="rename-dialog" aria-labelledby="rename-title"><h2 id="rename-title">Nombre de la cuenta</h2><p class="desc">Este nombre te ayuda a identificarla en el panel.</p><form id="rename-form"><label for="rename-input">Nombre</label><input id="rename-input" maxlength="48" required><div class="buttons"><button type="button" class="quiet" onclick="closeDialog('rename-dialog')">Cancelar</button><button type="submit" class="primary operation">Guardar nombre</button></div></form></dialog>
+<dialog id="confirm-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title"></h2><p id="confirm-description" class="desc"></p><div class="buttons"><button id="confirm-cancel" autofocus>Cancelar</button><button id="confirm-ok" class="primary">Confirmar</button></div></dialog>
+<dialog id="password-dialog" aria-labelledby="password-title"><h2 id="password-title">Cambiar contraseña</h2><p class="desc">Se cierran todas las sesiones al guardar. Tus modelos siguen funcionando.</p><form id="password-form"><div class="field"><label for="current-password">Contraseña actual</label><input id="current-password" type="password" autocomplete="current-password" maxlength="256" required></div><div class="field"><label for="new-password">Nueva contraseña</label><input id="new-password" type="password" autocomplete="new-password" minlength="16" maxlength="256" required><p class="hint">Entre 16 y 256 caracteres. Podés usar una frase larga.</p></div><div class="field"><label for="repeat-password">Repetir nueva contraseña</label><input id="repeat-password" type="password" autocomplete="new-password" minlength="16" maxlength="256" required></div><div id="password-error" class="error-text" role="alert"></div><div class="buttons"><button type="button" class="quiet" onclick="closeDialog('password-dialog')">Cancelar</button><button id="password-save" type="submit" class="primary">Guardar contraseña</button></div></form></dialog>
+<dialog id="palette-dialog" class="palette-dialog" aria-labelledby="palette-title">
+  <div class="palette-head">
+    <h2 id="palette-title" class="sr-only">Acciones rápidas</h2>
+    <input id="palette-search" placeholder="Escribí una acción, sección o modelo (ej. chatear, tps, encender, diagnosticar)…" oninput="renderPalette()">
+  </div>
+  <div id="palette-list" class="palette-list"></div>
+  <div class="palette-foot"><small>Hacé clic en cualquier acción para ejecutarla · Esc para cerrar</small><button class="quiet" onclick="closeDialog('palette-dialog')">Cerrar</button></div>
+</dialog>
+<dialog id="lightbox-dialog" class="lightbox-dialog" aria-label="Vista previa de imagen">
+  <div class="lightbox-top">
+    <span id="lightbox-caption">Imagen adjunta</span>
+    <div class="buttons">
+      <a id="lightbox-download" class="download" style="margin:0" download>Descargar original</a>
+      <button onclick="closeDialog('lightbox-dialog')">Cerrar</button>
+    </div>
+  </div>
+  <div class="lightbox-body"><img id="lightbox-img" alt="Vista previa ampliada"></div>
+</dialog>
+<script>let token='__TOKEN__';</script><script src="/assets/dashboard.js"></script></body></html>

@@ -1,0 +1,40 @@
+{
+    admin 127.0.0.1:2020
+}
+ia.example.com {
+    encode zstd gzip
+    request_body {
+        max_size 24MB
+    }
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+        Cache-Control no-store
+        -Server
+    }
+    handle /assets/geist.ttf {
+        root * /opt/kaggle-ia/sistema/fonts
+        rewrite * /Geist-Variable.ttf
+        file_server
+    }
+    handle_path /inference/cuenta1/* {
+        reverse_proxy 127.0.0.1:19134 {
+            header_up Host 127.0.0.1:19134
+            header_up X-IA-Public 1
+            flush_interval -1
+        }
+    }
+    handle_path /inference/cuenta2/* {
+        reverse_proxy 127.0.0.1:19860 {
+            header_up Host 127.0.0.1:19860
+            header_up X-IA-Public 1
+            flush_interval -1
+        }
+    }
+    handle {
+      reverse_proxy 127.0.0.1:8765 {
+        header_up X-IA-Client-IP {remote_host}
+      }
+    }
+}

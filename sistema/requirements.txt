@@ -1,0 +1,5 @@
+kaggle==2.2.5
+kagglesdk==0.1.38
+requests==2.34.2
+PyYAML==6.0.3
+six==1.17.0

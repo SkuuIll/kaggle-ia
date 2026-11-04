@@ -1,0 +1,69 @@
+# =============================================================================
+# Kaggle IA — Reglas de exclusión para Git / GitHub
+# NUNCA subir credenciales, estado privado, claves SSH ni notebooks generados.
+# =============================================================================
+
+# 1. Estado privado, credenciales de Kaggle, claves SSH y accesos
+.private/
+sistema/.private/
+**/.private/
+*kaggle*.json
+sistema/kaggle*.json
+ACCESO_PANEL.txt
+**/ACCESO_PANEL.txt
+*.pem
+*.key
+*.pub
+*kaggle_relay*
+*known_hosts*
+.env
+.env.*
+
+# 2. Catálogo activo y notebooks generados (contienen la clave SSH de relay)
+sistema/model_profiles.json
+!sistema/model_profiles.example.json
+sistema/kernel/
+sistema/kernel2/
+**/*.ipynb
+sistema/api_url.txt
+
+# 3. Bases de datos locales, registros, respaldos y paquetes exportados
+backups/
+exportaciones/
+*.sqlite
+*.sqlite3
+*.sqlite*
+*.db
+*.log
+*.pending
+*.importing
+*.bak
+*.tmp
+*.zip
+*.tar.gz
+*.tgz
+*.7z
+
+# 4. Entornos virtuales de Python, cachés y binarios de VPS
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+sistema/.venv/
+python/
+tools/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 5. Contexto interno de agentes y archivos de sistema/IDE
+PROJECT_CONTEXT.md
+AGENTS.md
+docs/superpowers/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini

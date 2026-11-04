@@ -1,0 +1,23 @@
+[Unit]
+Description=Kaggle IA private control panel
+After=network-online.target
+Wants=network-online.target
+[Service]
+User=kaggle-ia
+Group=kaggle-ia
+WorkingDirectory=/opt/kaggle-ia/sistema
+Environment=HOME=/opt/kaggle-ia/sistema/.private/user-home
+Environment=IA_SERVER_MODE=vps
+Environment=IA_PUBLIC_ORIGIN=https://ia.example.com
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/kaggle-ia/sistema/.venv/bin/python /opt/kaggle-ia/sistema/panel_server.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/kaggle-ia/sistema /opt/kaggle-ia/exportaciones
+UMask=0077
+[Install]
+WantedBy=multi-user.target
