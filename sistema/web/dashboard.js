@@ -82,7 +82,7 @@ function renderIcons(container=document){
 }
 renderIcons();
 const pages={
-  dashboard:['Dashboard','RESUMEN DEL ESPACIO','Tus modelos, flujo de trabajo, sesiones y consumo, de un vistazo.'],
+  dashboard:['Inicio','RESUMEN DEL ESPACIO','Tus modelos, flujo de trabajo, sesiones y consumo, de un vistazo.'],
   chat:['Chat IA','ESTUDIO MULTIMODAL Y DOCUMENTOS','Conversá con tus modelos, medí TPS en vivo, enviá documentos, fotos o videos y descargá resultados.'],
   cuentas:['Cuentas','CONEXIONES DE KAGGLE','Agregá, identificá y administrá tus cuentas desde un solo lugar.'],
   modelos:['Modelos y TPS','OPTIMIZACIÓN PARA TESLA T4 ×2','Cambiá a arquitecturas MoE A3B o 1× GPU para alcanzar de 45 a 65 tokens por segundo.'],
@@ -128,17 +128,23 @@ function modelTelemetry(a){
   return {tps:'TPS sin medir',arch:'GGUF T4'};
 }
 
-function renderWorkflowStepper(){
-  if(!latest)return;
-  const configured=latest.accounts.filter(a=>a.configured);
-  const running=configured.filter(active);
-  const primary=running[0]||configured[0];
-  const tm=primary?modelTelemetry(primary):null;
-  const step1=`<div class="wf-step ${configured.length?'ready':''}" onclick="navigate('cuentas')"><div class="wf-top"><span>Paso 1 · Cuentas</span><span class="wf-num">1</span></div><div class="wf-title">${configured.length?`${configured.length} cuenta${configured.length>1?'s':''} lista${configured.length>1?'s':''}`:'Agregar API Kaggle'}</div><div class="wf-sub">${configured.length?configured.map(name).join(' · '):'Conectá tu token KGAT_ o kaggle.json'}</div></div>`;
-  const step2=`<div class="wf-step ${primary?'ready':''}" onclick="navigate('modelos')"><div class="wf-top"><span>Paso 2 · Modelo &amp; TPS</span><span class="wf-num">2</span></div><div class="wf-title">${primary?esc(uiText(primary.label.slice(0,26))):'Elegir modelo'}</div><div class="wf-sub">${primary?`${icon('activity')} ${esc(tm.tps)} · ${fmt(primary.context)} ctx`:'MoE A3B de alto TPS para Tesla T4'}</div></div>`;
-  const step3=`<div class="wf-step ${running.length?'active':''}" onclick="${primary?(running.length?`navigate('actividad')`:`startAccount('${primary.key}')`):`navigate('cuentas')`}"><div class="wf-top"><span>Paso 3 · Sesión GPU</span><span class="wf-num">3</span></div><div class="wf-title">${running.length?`Activa: ${esc(name(running[0]))}`:'GPU apagada'}</div><div class="wf-sub">${running.length?'Clic para ver monitoreo en vivo':primary?'Clic para encender '+esc(name(primary)):'Configurá una cuenta primero'}</div></div>`;
-  const step4=`<div class="wf-step ready" onclick="navigate('chat')"><div class="wf-top"><span>Paso 4 · Trabajar</span><span class="wf-num">4</span></div><div class="wf-title">Abrir Chat Multimodal</div><div class="wf-sub">Documentos, fotos, videos, código y TPS en vivo ${icon('arrow')}</div></div>`;
-  html('workflow-stepper',step1+step2+step3+step4);
+function renderLaunchConsole(){
+  const accounts=latest.accounts.filter(a=>a.configured);
+  const primary=accounts.find(active)||accounts.find(a=>!unknown(a))||accounts[0];
+  if(!primary){
+    html('workflow-stepper',`<p class="launch-label">PRIMERA CONEXIÓN</p><h2>Agregá una cuenta</h2><p>Vinculá Kaggle para iniciar un servidor.</p><button class="primary operation" onclick="openAccount()">Agregar cuenta</button>`);
+    return;
+  }
+  const connected=primary.state==='RUNNING'&&primary.live?.capabilities?.includes('session-v1');
+  const title=connected?'Servidor conectado':states[primary.state]||primary.state;
+  const action=active(primary)||busy()||unknown(primary)
+    ? `<button class="quiet" onclick="navigate('actividad')">Ver actividad</button>`
+    : `<button class="primary operation" onclick="startAccount('${primary.key}')">${icon('play')}Iniciar servidor</button>`;
+  html('workflow-stepper',`
+    <p class="launch-label">CUENTA ${esc(primary.account)} · ${esc(name(primary))}</p>
+    <h2>${esc(title)}</h2>
+    <p>${esc(uiText(primary.label))}</p>
+    ${action}`);
 }
 
 function render(){
@@ -158,7 +164,7 @@ function render(){
   select('chat-account',configured);
   if(!clientDefaultSet&&configured.length){el('client-account').value=(configured.find(active)||configured[0]).key;clientDefaultSet=true;}
   if(clientConfig&&clientConfig.profile_key!==el('client-account').value)clearClientConfig();
-  renderWorkflowStepper();
+  renderLaunchConsole();
   loadModel();loadTimers();renderDashboard();renderAccounts();renderHistory();renderJob();renderConnection();renderChatHeaderStatus();
   el('installation-mode').textContent=latest.server_mode==='vps'?'Servidor en la VPS. Los clientes usan HTTPS; Kaggle se conecta al relay por SSH.':'Controlador local en esta PC.';
   el('open-paseo').hidden=latest.server_mode==='vps';

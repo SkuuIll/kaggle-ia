@@ -2,6 +2,8 @@
 
 ## Abrir una sesión
 
+En **Inicio**, la consola muestra el estado de una cuenta y el acceso directo a **Iniciar servidor**. Debajo, **Servidores** reúne los controles por cuenta y **Uso y cuota** reúne las métricas.
+
 1. Entrá al panel HTTPS. En **Cuentas**, comprobá que la cuenta tenga credenciales válidas.
 2. Abrí **Chat IA**. El selector superior define la cuenta y el perfil del chat actual.
 3. Pulsá **Iniciar servidor**. Si ya hay otra cuenta activa, leé el aviso de cambio antes de confirmar.
