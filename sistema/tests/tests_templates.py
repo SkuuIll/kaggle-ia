@@ -5,12 +5,37 @@ for _d in [_ROOT, _ROOT / 'core', _ROOT / 'chat', _ROOT / 'pool', _ROOT / 'accou
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-import copy,json,tempfile,unittest,zipfile
+import ast,copy,json,shutil,subprocess,tempfile,unittest,zipfile
 from pathlib import Path
 from templates import MODELS,prepare_profile,get_template
 from tool_templates import build_tool_package
 
 class TemplateTests(unittest.TestCase):
+ def test_generated_notebook_embeds_runtime_sources_instead_of_cli_shims(self):
+  with tempfile.TemporaryDirectory() as temp:
+   root=Path(temp)
+   for name in ('build_single_notebook.py','accounts/build_single_notebook.py',
+                'lifecycle.py','accounts/lifecycle.py','vision_helper.py','chat/vision_helper.py',
+                'remote_gateway.py','core/remote_gateway.py','core/connection.py','pool/cpu_cache.py'):
+    target=root/name
+    target.parent.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(_ROOT/name,target)
+   private=root/'.private'
+   private.mkdir()
+   (private/'connection.json').write_text('{"host":"relay.example.com","user":"relay"}')
+   (private/'kaggle_relay').write_text('fixture')
+   (private/'known_hosts').write_text('fixture')
+   profile={'account':2,'model':'fixture','kernel_ref':'owner/private','kernel_title':'Fixture',
+            'kernel_dir':'kernel2','label':'Fixture','context':131072}
+   (root/'model_profiles.json').write_text(json.dumps({'profiles':{'coder2':profile}}))
+   subprocess.run([sys.executable,str(root/'build_single_notebook.py'),'coder2'],
+                  check=True,capture_output=True)
+   data=json.loads((root/'kernel2/coder_server.ipynb').read_text(encoding='utf8'))
+   nodes=[node for cell in data['cells'] for node in ast.walk(ast.parse(''.join(cell['source'])))]
+   self.assertFalse(any(isinstance(node,ast.Name) and node.id=='__file__' for node in nodes))
+   self.assertTrue({'proxy','observe_frames','stop_reason'} <=
+                   {node.name for node in nodes if isinstance(node,ast.FunctionDef)})
+
  def metadata(self,t):return {'sha':t['revision'],'siblings':[{'rfilename':t['filename'],'size':t['size_bytes']}],'gguf':{'context_length':t['native_context']}}
  def test_template_preserves_account_relay_and_alias(self):
   t=MODELS[0];original={'account':2,'port':17860,'model':'fixed-alias','kernel_ref':'owner/private','label':'Old'}

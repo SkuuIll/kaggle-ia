@@ -14,8 +14,8 @@ if cache is None:profile.pop('cache_source',None)
 port=profile.get('port',18134)
 key=(BASE/'.private/kaggle_relay').read_text()
 hosts=(BASE/'.private/known_hosts').read_text()
-vision_helper=(BASE/'vision_helper.py').read_text(encoding='utf8')+'\n'
-gateway=vision_helper+(BASE/'remote_gateway.py').read_text(encoding='utf8').replace('18134',str(port))
+vision_helper=(BASE/'chat/vision_helper.py').read_text(encoding='utf8')+'\n'
+gateway=vision_helper+(BASE/'core/remote_gateway.py').read_text(encoding='utf8').replace('18134',str(port))
 cells=[]
 def code(source):
     if cells:
@@ -95,7 +95,7 @@ print('MODEL_READY',flush=True)
 runtime_fingerprint['ready_elapsed_seconds']=round(time.monotonic()-_allocation_started,1)
 report_phase('ready')
 '''.replace('127.0.0.1:18134',f'127.0.0.1:{port}'))
-code((BASE/'lifecycle.py').read_text(encoding='utf8')+'''
+code((BASE/'accounts/lifecycle.py').read_text(encoding='utf8')+'''
 session_started=_allocation_started
 idle_policy=config.get('idle_minutes',15)
 maximum_policy=config.get('max_session_minutes',120)
