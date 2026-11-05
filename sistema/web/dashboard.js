@@ -83,7 +83,7 @@ function renderIcons(container=document){
 renderIcons();
 const pages={
   dashboard:['Inicio','RESUMEN DEL ESPACIO','Tus modelos, flujo de trabajo, sesiones y consumo, de un vistazo.'],
-  chat:['Chat IA','ESTUDIO MULTIMODAL Y DOCUMENTOS','Conversá con tus modelos, medí TPS en vivo, enviá documentos, fotos o videos y descargá resultados.'],
+  chat:['Chat IA','ESTUDIO MULTIMODAL Y DOCUMENTOS','Conversá con tus modelos, consultá los TPS por respuesta, enviá documentos, fotos o videos y descargá resultados.'],
   cuentas:['Cuentas','CONEXIONES DE KAGGLE','Agregá, identificá y administrá tus cuentas desde un solo lugar.'],
   modelos:['Modelos y TPS','OPTIMIZACIÓN PARA TESLA T4 ×2','Cambiá a arquitecturas MoE A3B o 1× GPU para alcanzar de 45 a 65 tokens por segundo.'],
   plantillas:['Plantillas','CATÁLOGO DE TU ESPACIO','Instalá modelos optimizados y prepará herramientas con configuraciones listas para usar.'],
@@ -122,10 +122,10 @@ function select(id,accounts,all=false){const n=el(id);if(!n)return;const previou
 
 function modelTelemetry(a){
   const t=templateCatalog?.models?.find(m=>m.id===a.template_id||m.filename===a.filename);
-  if(t)return {tps:'TPS sin medir',arch:t.arch||'MoE / GGUF'};
-  if(a.filename.includes('A3B'))return {tps:'TPS sin medir',arch:'MoE A3B (3B activos)'};
-  if(a.filename.includes('27B')||a.filename.includes('32B'))return {tps:'TPS sin medir',arch:'Denso 27B+'};
-  return {tps:'TPS sin medir',arch:'GGUF T4'};
+  if(t)return {tps:'TPS en Chat IA',arch:t.arch||'MoE / GGUF'};
+  if(a.filename.includes('A3B'))return {tps:'TPS en Chat IA',arch:'MoE A3B (3B activos)'};
+  if(a.filename.includes('27B')||a.filename.includes('32B'))return {tps:'TPS en Chat IA',arch:'Denso 27B+'};
+  return {tps:'TPS en Chat IA',arch:'GGUF T4'};
 }
 
 function renderLaunchConsole(){
@@ -392,7 +392,7 @@ function renderPalette(){
   const q=el('palette-search').value.trim().toLowerCase();
   const configured=latest?.accounts?.filter(a=>a.configured)||[];
   const items=[
-    {label:'Ir a Chat IA Multimodal',sub:'Enviar documentos, fotos, videos y código con TPS en vivo',run:()=>navigate('chat')},
+    {label:'Ir a Chat IA Multimodal',sub:'Enviar documentos, fotos, videos y código con TPS por respuesta',run:()=>navigate('chat')},
     {label:'Optimizar TPS y cambiar modelo en Tesla T4',sub:'Comparar MoE A3B (45–65 TPS) vs 1× GPU vs Denso',run:()=>navigate('modelos')},
     {label:'Nueva conversación en Chat IA',sub:'Crear sesión limpia con tu modelo',run:()=>{navigate('chat');createChatConversation();}},
     {label:'Ir al Dashboard',sub:'Resumen de cuotas, tokens y sesiones',run:()=>navigate('dashboard')},

@@ -2443,3 +2443,40 @@ dialog select,dialog textarea{background:var(--surface);color:var(--text);border
   .sidebar:not(.mobile-open){visibility:hidden}
   .sidebar.mobile-open{visibility:visible;background:#211a17}
 }
+
+/* Readability across the console and its media viewer. */
+body{font-size:15px;line-height:1.5}
+.layout :is(.hint,.caption,.notice,.footnote,.small,.account-caption,.card-foot small,
+             .panel-title p,.setting-row p,.event-main small,.quota-foot,td small){
+  font-size:13px;line-height:1.55;
+}
+.layout :is(button,select,input,textarea,table),dialog :is(button,select,input,textarea){font-size:14px}
+.layout :is(th,.chip,.badge){font-size:12px}
+.layout .model-card button{min-height:40px}
+.layout :is(.account-name,.model-label,.event-main){font-size:15px}
+.layout .panel-title h2,.layout .section-heading h2{font-size:21px}
+.layout a,dialog a{color:var(--console-accent)}
+.layout :is(.tps-card,.spec-box,.recipe,.file-zone,.segmented,.palette-item),
+dialog :is(.file-zone,.segmented,.palette-item){background:var(--surface-2);border-color:var(--line)}
+.layout :is(.tps-card-top b,.spec-box strong,.spec-box span,.recipe-facts dd,.recipe h3),
+dialog :is(.palette-item b,.palette-item small){color:var(--text)}
+.layout .download,dialog .download{background:#f4e5d6;border-color:#d9b9a4;color:#793019;font-size:13px}
+.layout :is(.error-text,.event-icon.bad),dialog .error-text{color:#8a2922}
+.chat-workspace .chat-msg-body,.chat-workspace #chat-input{font-size:16px;line-height:1.65}
+.chat-workspace :is(.chat-conv-sub,.chat-att-sum,.chat-time-tag,.starter-content span){font-size:13px;color:var(--muted)}
+.chat-workspace .chat-hero-sub{font-size:15px;color:var(--muted)}
+.chat-workspace .chat-att-name{font-size:14px}
+.chat-workspace .tps-pill{color:#643722;background:#f5e5d5;border:1px solid #dec0a7;font-size:12px}
+.chat-workspace .chat-msg-meta{flex-wrap:wrap;justify-content:flex-end}
+.chat-workspace .chat-att-thumb,.lightbox-body{
+  background:var(--surface-3);
+  border:1px solid var(--line);
+}
+.lightbox-body pre{color:var(--text);font-size:14px;line-height:1.55}
+.lightbox-body video{background:#211a17}
+#lightbox-caption{color:var(--text);font-size:16px;font-weight:650}
+@media(max-width:640px){
+  .layout input,.layout select,.layout textarea{font-size:16px}
+  .chat-workspace .chat-header-select{font-size:14px}
+  .chat-workspace .chat-msg-head{align-items:flex-start}
+}

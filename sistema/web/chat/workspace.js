@@ -11,7 +11,7 @@ const WORKFLOW_PRESETS={
 
 const chatDrafts=new Map();
 let creatingChat=false,uploadingChatFiles=false,sendingChatMessage=false,chatSelection=0,chatRequestConversation=null;
-let chatConversations=[],activeChatId=null,chatState={conversation:null,messages:[]},pendingAttachments=[],activeRequestId=null,chatPollTimer=null,codeBlocksStore=[],msgTelemetry={};
+let chatConversations=[],activeChatId=null,chatState={conversation:null,messages:[]},pendingAttachments=[],activeRequestId=null,chatPollTimer=null,codeBlocksStore=[];
 
 async function loadChatConversations(){
   try{
@@ -508,8 +508,8 @@ function renderChatMessages(scrollBottom=false){
     const isUser=m.role==='user';
     const roleLabel=isUser?`<span class="chat-msg-role user"><span class="chat-avatar-pill user">${icon('user')} Vos</span></span>`:`<span class="chat-msg-role assistant"><span class="chat-avatar-pill assistant">${icon('cpu')} Asistente</span></span>`;
     const timeStr=m.created_at?new Date(m.created_at*1000).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}):'';
-    const tele=msgTelemetry[m.id];
-    const tpsBadge=tele&&tele.tps>0?`<span class="tps-pill">${icon('activity')} ${tele.tps} TPS · ${tele.tokens} tok · ${tele.elapsed}s</span>`:'';
+    const tele=m.measurement;
+    const tpsBadge=tele&&tele.tps>0?`<span class="tps-pill" title="Promedio de la solicitud, incluida la espera y el razonamiento">${icon('activity')} ${fmt(tele.tps)} TPS promedio · ${fmt(tele.tokens)} tokens · ${fmt(tele.elapsed)} s</span>`:'';
     const atts=(m.attachments||[]).length?`<div class="chat-att-grid">${m.attachments.map(renderAttachmentCard).join('')}</div>`:'';
     const body=m.content?`<div class="chat-msg-body">${renderMarkdown(m.status==='error'?m.content.replace(/^\u26a0\uFE0F?\s*/,''):m.content,i)}</div>`:(m.status==='running'?'<div class="chat-msg-body muted"><i class="pulse"></i> Esperando respuesta del modelo…</div>':'');
     return `<article class="chat-msg ${esc(m.role)}"><div class="chat-msg-head">${roleLabel}<div class="chat-msg-meta">${tpsBadge}<span class="chat-time-tag">${m.status==='running'?'Generando…':timeStr}</span></div></div>${atts}${body}<div class="chat-msg-foot"><button type="button" class="chat-foot-btn" onclick="copyChatMessage(${i})">${icon('copy')}<span>Copiar</span></button>${!isUser?`<button type="button" class="chat-foot-btn" onclick="downloadChatMessage(${i})">${icon('download')}<span>Descargar .md</span></button>`:''}</div></article>`;
@@ -629,13 +629,11 @@ async function pollChatRequest(reqId,asstMsgId){
     if(r.status===401){location.replace('/login?expired=1');return;}
     if(!r.ok&&r.status!==404)throw Error('No se pudo actualizar la respuesta.');
     const st=r.ok?await r.json():{status:'interrupted',error:'La solicitud ya no está disponible.'};
-    if(st.tps||st.tokens){
-      msgTelemetry[asstMsgId]={tps:st.tps||0,tokens:st.tokens||0,elapsed:st.elapsed||0};
-    }
     const msg=chatState.messages?.find(m=>m.id===asstMsgId);
     if(msg){
       msg.content=st.content||(st.error?'No se completó la respuesta: '+st.error:'');
       msg.status=st.status;
+      if(st.status==='done'&&st.measurement_kind==='request')msg.measurement=st;
       renderChatMessages();
     }
     if(st.status==='running'){

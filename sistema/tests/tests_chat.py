@@ -67,6 +67,27 @@ class ChatEngineTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 store.get_attachment_preview('missing')
 
+    def test_stream_usage_is_saved_with_the_answer_after_reload(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store=ChatStore(Path(tmp))
+            cid=store.create_conversation('rapido')['id']
+            response=FakeStreamResponse(200,[
+                'data: {"choices":[{"delta":{"content":"Hola"}}]}',
+                'data: {"choices":[],"usage":{"completion_tokens":12}}',
+                'data: [DONE]',
+            ])
+            with patch('chat_engine.requests.post',return_value=response) as post:
+                result=store.start_send(cid,'Saludá',[],{'account':1,'model':'test'})
+                for _ in range(100):
+                    state=store.get_request(result['request_id'])
+                    if state['status']!='running':break
+                    time.sleep(.01)
+                self.assertEqual(state['status'],'done')
+                self.assertTrue(post.call_args.kwargs['json']['stream_options']['include_usage'])
+            answer=ChatStore(Path(tmp)).get_conversation(cid)['messages'][-1]
+            self.assertEqual(answer['measurement']['tokens'],12)
+            self.assertGreater(answer['measurement']['tps'],0)
+
     def test_conversation_lifecycle_and_archive(self):
         with tempfile.TemporaryDirectory() as tmp:
             store=ChatStore(Path(tmp))

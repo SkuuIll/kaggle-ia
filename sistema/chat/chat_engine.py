@@ -233,12 +233,23 @@ class ChatStore:
             if not conv:raise ValueError('Conversación no encontrada.')
             msgs=db.execute('SELECT id,role,content,status,created_at FROM messages WHERE conversation_id=? ORDER BY created_at ASC',(cid,)).fetchall()
             atts=db.execute('SELECT id,message_id,name,mime,size,kind,summary,created_at FROM attachments WHERE conversation_id=? ORDER BY created_at ASC',(cid,)).fetchall()
+            measurements={
+                row['message_id']:{'tps':row['tps'],'tokens':row['tokens'],'elapsed':row['elapsed']}
+                for row in db.execute("""
+                    SELECT message_id, json_extract(payload,'$.tps') AS tps,
+                           json_extract(payload,'$.tokens') AS tokens,
+                           json_extract(payload,'$.elapsed') AS elapsed
+                    FROM chat_requests WHERE conversation_id=? AND status='done'
+                    AND json_extract(payload,'$.measurement_kind')='request'
+                """,(cid,))
+            }
         by_msg={}
         for a in atts:
             if a['message_id']:by_msg.setdefault(a['message_id'],[]).append(dict(a))
         messages=[]
         for m in msgs:
             item=dict(m);item['attachments']=by_msg.get(m['id'],[])
+            if m['id'] in measurements:item['measurement']=measurements[m['id']]
             messages.append(item)
         with self._conn() as db:latest=db.execute('SELECT payload FROM chat_requests WHERE conversation_id=? ORDER BY updated_at DESC LIMIT 1',(cid,)).fetchone()
         pending=[dict(a) for a in atts if a['message_id'] is None and not self._attachment_archived(a['id'])]
@@ -427,7 +438,7 @@ class ChatStore:
             packed_messages,context_stats=pack_context(self._build_api_messages(dict(conv),history_rows,att_by_msg),profile.get('context',32768),max_out)
         req_id=uuid.uuid4().hex[:16]
         cancel_ev=threading.Event()
-        state={'id':req_id,'conversation_id':cid,'message_id':asst_msg_id,'status':'running','content':'','error':'','cancel':cancel_ev,'title':new_title,'started_at':time.monotonic(),'first_token_at':None,'tokens':0,'tps':0.0,'elapsed':0.0,'context':context_stats,'reserved_bytes':reserved_bytes}
+        state={'id':req_id,'conversation_id':cid,'message_id':asst_msg_id,'status':'running','content':'','error':'','cancel':cancel_ev,'title':new_title,'started_at':time.monotonic(),'tokens':0,'tps':0.0,'elapsed':0.0,'context':context_stats,'reserved_bytes':reserved_bytes}
         self._persist_request(state,True)
         with self.lock:self.requests[req_id]=state
         proxy_port=19134 if profile.get('account')==1 else 19860
@@ -454,8 +465,9 @@ class ChatStore:
                     has_images=False
                 for attempt,use_images in enumerate([True]):
                     api_msgs=packed_messages
-                    payload={'model':profile['model'],'messages':api_msgs,'stream':True,'temperature':temp_val,'max_tokens':max_out}
+                    payload={'model':profile['model'],'messages':api_msgs,'stream':True,'stream_options':{'include_usage':True},'temperature':temp_val,'max_tokens':max_out}
                     if profile.get('effort'):payload['reasoning_effort']=profile['effort']
+                    inference_started=time.perf_counter()
                     with requests.post(f'http://127.0.0.1:{proxy_port}/v1/chat/completions',json=payload,headers={'Host':f'127.0.0.1:{proxy_port}','Content-Type':'application/json'},stream=True,timeout=(10,600)) as resp:
                         with self.lock:state['response']=resp
                         if cancel_ev.is_set():next_status='cancelled';break
@@ -477,26 +489,17 @@ class ChatStore:
                             except ValueError:continue
                             usage_obj=chunk.get('usage') or {}
                             choices=chunk.get('choices') or []
-                            if choices:
-                                delta=choices[0].get('delta') or {}
-                                piece=delta.get('content') or ''
+                            piece=choices[0].get('delta',{}).get('content') if choices else None
+                            tokens=usage_obj.get('completion_tokens')
+                            with self.lock:
                                 if piece:
-                                    t_now=time.monotonic()
-                                    with self.lock:
-                                        if state['first_token_at'] is None:state['first_token_at']=t_now
-                                        if len(state['content'].encode('utf8'))+len(piece.encode('utf8'))>max_out*16:raise ValueError('La respuesta superó el límite de tamaño reservado.')
-                                        state['content']+=piece
-                                        if usage_obj.get('completion_tokens') is not None:state['tokens']=int(usage_obj['completion_tokens'])
-                                        gen_span=max(0.05,t_now-state['first_token_at'])
-                                        state['tps']=round(state['tokens']/gen_span,1)
-                                        state['elapsed']=round(t_now-state['started_at'],1)
-                            elif usage_obj.get('completion_tokens'):
-                                t_now=time.monotonic()
-                                with self.lock:
-                                    state['tokens']=int(usage_obj['completion_tokens'])
-                                    gen_span=max(0.05,t_now-(state['first_token_at'] or state['started_at']))
-                                    state['tps']=round(state['tokens']/gen_span,1)
-                                    state['elapsed']=round(t_now-state['started_at'],1)
+                                    if len(state['content'].encode('utf8'))+len(piece.encode('utf8'))>max_out*16:raise ValueError('La respuesta superó el límite de tamaño reservado.')
+                                    state['content']+=piece
+                                if type(tokens) is int and tokens>0:
+                                    elapsed=time.perf_counter()-inference_started
+                                    if elapsed>0:
+                                        state.update(tokens=tokens,tps=round(tokens/elapsed,1),
+                                                     elapsed=round(elapsed,3),measurement_kind='request')
                             self._persist_request(state)
                         break
             except Exception as exc:
@@ -529,7 +532,7 @@ class ChatStore:
         now=time.monotonic()
         if not force and now-state.get('_persisted_at',0)<1:return
         state['_persisted_at']=now
-        fields=('id','conversation_id','message_id','status','content','error','title','tps','tokens','elapsed','context','reserved_bytes')
+        fields=('id','conversation_id','message_id','status','content','error','title','tps','tokens','elapsed','measurement_kind','context','reserved_bytes')
         snapshot={key:state.get(key) for key in fields}
         with self._conn() as db:
             db.execute('INSERT OR REPLACE INTO chat_requests VALUES(?,?,?,?,?,?)',(state['id'],state['conversation_id'],state['message_id'],state['status'],json.dumps(snapshot,ensure_ascii=False),time.time()))
@@ -538,7 +541,7 @@ class ChatStore:
     def get_request(self,req_id):
         with self.lock:
             state=self.requests.get(req_id)
-            if state:return {key:state.get(key) for key in ('id','status','content','error','title','tps','tokens','elapsed','context','reserved_bytes')}
+            if state:return {key:state.get(key) for key in ('id','status','content','error','title','tps','tokens','elapsed','measurement_kind','context','reserved_bytes')}
         with self._conn() as db:row=db.execute('SELECT payload FROM chat_requests WHERE id=?',(req_id,)).fetchone()
         if not row:raise ValueError('Solicitud de generación no encontrada.')
         return json.loads(row['payload'])

@@ -27,6 +27,10 @@ En **Inicio**, la consola muestra el estado de una cuenta y el acceso directo a 
 - El historial completo se guarda en el panel. Si se supera el presupuesto de contexto, se omiten mensajes antiguos del envío al modelo y el chat indica cuántos. Las respuestas fallidas siguen visibles para diagnóstico.
 - **Cancelar** solicita cerrar una generación. Para terminar la sesión GPU, elegí **Apagar** en Cuentas y comprobá la parada en Actividad.
 
+## Velocidad de una respuesta
+
+Cuando el motor devuelve el conteo de tokens, la respuesta muestra los **TPS promedio**, los tokens de salida y el tiempo transcurrido hasta recibir ese conteo. Es el rendimiento observado desde el panel e incluye la espera y el razonamiento de la solicitud. El dato queda guardado junto a la respuesta. Para obtener una medición, iniciá una cuenta y enviá un mensaje.
+
 ## Visor de adjuntos
 
 Pulsá **Vista previa** en la tarjeta del archivo para abrir el visor sin salir de la conversación.
