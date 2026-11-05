@@ -1,5 +1,23 @@
-"""Pure lifetime policy, shared with the generated Kaggle notebook."""
-def stop_reason(started,last_activity,active_requests,now,idle_minutes=15,max_minutes=120):
-    if now-started>=max_minutes*60:return 'limite de sesion'
-    if active_requests==0 and now-last_activity>=idle_minutes*60:return 'inactividad'
-    return None
+"""Compatibility forwarder for sistema.accounts.lifecycle"""
+import sys, runpy
+from pathlib import Path
+
+_BASE = Path(__file__).resolve().parent
+_SUBDIRS = ['core', 'chat', 'pool', 'accounts', 'clients', 'templates', 'web', 'tests']
+for _sub in _SUBDIRS:
+    _p = str(_BASE / _sub)
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+if str(_BASE) not in sys.path:
+    sys.path.insert(0, str(_BASE))
+
+_target = _BASE / 'accounts' / 'lifecycle.py'
+
+if __name__ == '__main__':
+    runpy.run_path(str(_target), run_name='__main__')
+else:
+    from accounts.lifecycle import *
+    from accounts import lifecycle as _mod
+    for _k in dir(_mod):
+        if not _k.startswith('__'):
+            globals()[_k] = getattr(_mod, _k)

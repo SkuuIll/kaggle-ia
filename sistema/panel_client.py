@@ -1,26 +1,23 @@
-"""Start the local panel/proxy service without starting any GPU."""
-import os,subprocess,sys,time,webbrowser
+"""Compatibility forwarder for sistema.core.panel_client"""
+import sys, runpy
 from pathlib import Path
-import requests
-BASE=Path(__file__).resolve().parent
-URL='http://127.0.0.1:8765'
-def ensure_panel(open_browser=False):
-    if (BASE/'.private/panel-remote.json').exists():
-        from remote_panel import ensure_remote
-        return ensure_remote(open_browser)
-    def alive():
-        try:return requests.get(URL+'/health',timeout=1).json().get('service')=='kaggle-ia-panel'
-        except (requests.RequestException,ValueError):return False
-    if not alive():
-        folder=BASE/'.private';folder.mkdir(exist_ok=True)
-        python=Path(sys.executable);pythonw=python.with_name('pythonw.exe')
-        executable=pythonw if pythonw.exists() else python
-        log=open(folder/'panel.log','a',encoding='utf8')
-        subprocess.Popen([str(executable),str(BASE/'panel_server.py')],cwd=BASE,stdout=log,stderr=log,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-        for _ in range(100):
-            if alive():break
-            time.sleep(.1)
-        else:raise RuntimeError('No se pudo iniciar el panel. Revisa si los puertos8765,19134 o19860 estan ocupados.')
-    if open_browser:webbrowser.open(URL)
-    return URL
-if __name__=='__main__':print(ensure_panel(open_browser='--open' in sys.argv))
+
+_BASE = Path(__file__).resolve().parent
+_SUBDIRS = ['core', 'chat', 'pool', 'accounts', 'clients', 'templates', 'web', 'tests']
+for _sub in _SUBDIRS:
+    _p = str(_BASE / _sub)
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+if str(_BASE) not in sys.path:
+    sys.path.insert(0, str(_BASE))
+
+_target = _BASE / 'core' / 'panel_client.py'
+
+if __name__ == '__main__':
+    runpy.run_path(str(_target), run_name='__main__')
+else:
+    from core.panel_client import *
+    from core import panel_client as _mod
+    for _k in dir(_mod):
+        if not _k.startswith('__'):
+            globals()[_k] = getattr(_mod, _k)

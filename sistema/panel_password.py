@@ -1,11 +1,23 @@
-"""Interactive password reset. Never accept passwords in command-line arguments."""
-import getpass,json,os
+"""Compatibility forwarder for sistema.core.panel_password"""
+import sys, runpy
 from pathlib import Path
-from panel_auth import password_record
-if __name__=='__main__':
-    user=input('Usuario del panel [admin]: ').strip() or 'admin'
-    password=getpass.getpass('Contrasena nueva (minimo 16 caracteres): ')
-    if password!=getpass.getpass('Repetir contrasena: '):raise SystemExit('No coinciden; sin cambios.')
-    path=Path(__file__).resolve().parent/'.private/panel-auth.json';path.parent.mkdir(parents=True,exist_ok=True)
-    path.write_text(json.dumps(password_record(user,password)),encoding='utf8');os.chmod(path,0o600)
-    print('Hash actualizado. Reinicia kaggle-ia para aplicar; la contrasena no se muestra.')
+
+_BASE = Path(__file__).resolve().parent
+_SUBDIRS = ['core', 'chat', 'pool', 'accounts', 'clients', 'templates', 'web', 'tests']
+for _sub in _SUBDIRS:
+    _p = str(_BASE / _sub)
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+if str(_BASE) not in sys.path:
+    sys.path.insert(0, str(_BASE))
+
+_target = _BASE / 'core' / 'panel_password.py'
+
+if __name__ == '__main__':
+    runpy.run_path(str(_target), run_name='__main__')
+else:
+    from core.panel_password import *
+    from core import panel_password as _mod
+    for _k in dir(_mod):
+        if not _k.startswith('__'):
+            globals()[_k] = getattr(_mod, _k)

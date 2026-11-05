@@ -1,17 +1,23 @@
-"""Recoverable removal of panel credentials, only after a fresh terminal state."""
-import time,uuid
+"""Compatibility forwarder for sistema.accounts.account_management"""
+import sys, runpy
 from pathlib import Path
-TERMINAL={'COMPLETE','ERROR','CANCEL_ACKNOWLEDGED','MISSING'}
 
-def remove_account(config,key,base,probe):
-    base=Path(base).resolve();profile=config['profiles'][key]
-    credential=base/f'kaggle({profile["account"]}).json'
-    if not credential.exists():raise ValueError('Esta conexion no tiene una cuenta guardada.')
-    if probe(key) not in TERMINAL:raise ValueError('No se confirmo el apagado. La cuenta se conserva para que puedas detenerla.')
-    folder=base/'.private/removed-accounts';folder.mkdir(parents=True,exist_ok=True)
-    archive=folder/(key+'-'+str(int(time.time()))+'-'+uuid.uuid4().hex[:8]+'.json')
-    credential.replace(archive);archive.chmod(0o600)
-    profile['enabled']=False
-    if config.get('selected')==key:
-        config['selected']=next((k for k,p in config['profiles'].items() if k!=key and (base/f'kaggle({p["account"]}).json').exists()),key)
-    return archive
+_BASE = Path(__file__).resolve().parent
+_SUBDIRS = ['core', 'chat', 'pool', 'accounts', 'clients', 'templates', 'web', 'tests']
+for _sub in _SUBDIRS:
+    _p = str(_BASE / _sub)
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+if str(_BASE) not in sys.path:
+    sys.path.insert(0, str(_BASE))
+
+_target = _BASE / 'accounts' / 'account_management.py'
+
+if __name__ == '__main__':
+    runpy.run_path(str(_target), run_name='__main__')
+else:
+    from accounts.account_management import *
+    from accounts import account_management as _mod
+    for _k in dir(_mod):
+        if not _k.startswith('__'):
+            globals()[_k] = getattr(_mod, _k)

@@ -1,5 +1,7 @@
 # Guía de Uso del Panel Web
 
+Para iniciar la GPU desde el chat y entender qué significa cada estado, consultá la [guía de chat y arranque](CHAT_Y_ARRANQUE.md).
+
 El panel de control (`https://ia.example.com`) centraliza la administración de tus cuentas de Kaggle, modelos GGUF, métricas de uso y configuraciones de clientes en seis secciones principales, con botones de acción rápida (**Apagar todas** y **Agregar cuenta**) siempre visibles en el encabezado.
 
 ---

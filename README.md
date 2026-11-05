@@ -4,18 +4,14 @@ Plataforma privada alojada en VPS para administrar, monitorear y exponer servido
 
 ---
 
-## Antes de instalar
+## Inicio rápido desde la web
 
-Este repositorio contiene código y plantillas, no acceso a una instalación existente. No incluye cuentas, tokens, claves SSH, conversaciones, archivos adjuntos ni respaldos. `ia.example.com` es un dominio de ejemplo: reemplazalo por uno propio. La interfaz permanece autenticada aunque el código sea público.
+1. Entrá al panel HTTPS y abrí **Cuentas** para verificar que haya una cuenta configurada.
+2. En **Chat IA**, elegí la cuenta, prepará tu mensaje y pulsá **Iniciar servidor**. Si otra cuenta está activa, el panel pide confirmación antes de cambiarla.
+3. Seguí la publicación y el arranque en **Actividad**. Cuando el chat indique **Servidor conectado**, enviá el mensaje.
+4. Para cerrar la sesión de cómputo, usá **Apagar** y comprobá el estado terminal en Actividad. Cancelar una respuesta detiene solo esa solicitud.
 
-Requiere una VPS Linux x86_64 con SSH y un dominio, una cuenta Kaggle habilitada para aceleradores, Python 3.11+ y configuración privada propia. La GPU gratuita tiene cuotas y disponibilidad variables; la VPS puede tener costo. No se garantizan 30 horas, un contexto concreto, TPS ni tiempos de arranque. No uses cuentas múltiples para eludir cuotas o las condiciones de Kaggle; los dos conectores son opcionales y el panel limita la GPU simultánea.
-
-1. Cloná `https://github.com/SkuuIll/kaggle-ia.git`.
-2. Revisá [Primer despliegue](docs/manual/PRIMER_DESPLIEGUE.md): explica qué configuración falta y qué requiere intervención del administrador.
-3. Configurá el relay, las credenciales y el dominio antes de ejecutar [el instalador VPS](docs/manual/VPS.md). El instalador no aprovisiona automáticamente el relay SSH.
-4. Ingresá al panel, verificá la conexión y descargá la configuración HTTPS para tus clientes.
-
-Los modelos son referencias externas: cada proveedor conserva su licencia, disponibilidad y restricciones. Una etiqueta «uncensored» no garantiza ausencia de rechazos ni precisión. La interpretación de imágenes requiere un modelo con visión; video usa muestras, no todos los fotogramas, y la transcripción de audio requiere componentes opcionales.
+[Guía del chat y del arranque web](docs/manual/CHAT_Y_ARRANQUE.md)
 
 ## Arquitectura general
 
@@ -23,7 +19,7 @@ Los modelos son referencias externas: cada proveedor conserva su licencia, dispo
 [ Kaggle GPU (T4 x2) ]
    │  Ollama (127.0.0.1:11434) + Gateway de control
    │  Túnel SSH inverso restringido (loopback)
-   â–¼
+   ▼
 [ VPS Linux (/opt/kaggle-ia) ]
    ├── Relay interno Cuenta 1 (127.0.0.1:18134) ──► Proxy medido (127.0.0.1:19134)
    ├── Relay interno Cuenta 2 (127.0.0.1:17860) ──► Proxy medido (127.0.0.1:19860)
@@ -45,8 +41,8 @@ Los modelos son referencias externas: cada proveedor conserva su licencia, dispo
 
 - **Dashboard interactivo y flujo guiado:** monitoreo en tiempo real de sesiones activas, cuota oficial de GPU en Kaggle (horas usadas, reservadas, disponibles y fecha de renovación), solicitudes, gráfico de tokens medidos de los últimos 7 días, barra de flujo de trabajo en 4 pasos y paleta de comandos rápida (`Ctrl+K`).
 - **Chat IA Multimodal integrado en la web:** estudio de conversación dentro del panel que permite chatear directamente con los modelos alojados, adjuntar **documentos** (`.pdf`, `.docx`, `.xlsx`, `.pptx`, `.txt`, `.md`, `.csv`, `.json`), **código fuente**, **fotos** (`.png`, `.jpg`, `.webp`, `.gif` con visor ampliado), **videos** (`.mp4`, `.webm`, `.mov` con reproductor en línea) y **audios** (`.mp3`, `.wav`, `.ogg`), además de descargar cualquier adjunto original, bloques de código generados, transcripciones `.md` o paquetes `.zip` completos de la conversación.
-- **Gestión multicuentas:** soporte para dos conexiones configurables (`kaggle.json` legacy o token `KGAT_` con detección automática de usuario), manteniendo una única sesión GPU activa a la vez para proteger la cuota.
-- **Selector y catálogo de modelos GGUF:** inspección directa de repositorios en Hugging Face con revisión SHA fija, más un catálogo curado de **Plantillas** con 6 modelos de código de baja restricción (*abliterated/uncensored*), 3 paquetes de herramientas aisladas (Aider, cliente HTTPX, chat Streamlit) y 5 flujos de instrucciones.
+- **Gestión multicuentas:** ocho slots previstos, con credenciales independientes para cada cuenta configurada (`kaggle.json` legacy o token `KGAT_` con detección automática de usuario), manteniendo una única sesión GPU activa a la vez para proteger la cuota.
+- **Selector y catálogo de modelos GGUF:** inspección directa de repositorios en Hugging Face con revisión SHA fija, más un catálogo en **Plantillas** con los modelos, herramientas y flujos disponibles en la instalación.
 - **Diagnóstico y ahorro de cuota:** comprobación de estado en tres capas (Kaggle, API HTTPS y modelo residente en VRAM) sin generar tokens ni iniciar GPUs, perfiles de contexto (`16k`, `32k`, `128k`), autoapagado configurable en el notebook (por defecto 15 min de inactividad / 120 min máximo) y extensión explícita de sesión (`+30 min`).
 - **Configuración de clientes lista para usar:** generación de bloques copiables (`opencode.json`, `config.json` de Paseo, `config.yaml` de Continue) y descarga de paquete instalador privado para Windows desde el navegador.
 - **Portabilidad y publicación segura:** separación estricta entre la exportación pública de código (`sistema/publicar_codigo.py`, escaneada contra secretos locales) y los respaldos privados de conexión.
@@ -65,16 +61,15 @@ kaggle/
 │   └── kaggle-ia-web.service     # Servicio systemd de Caddy HTTPS
 ├── docs/manual/                  # Documentación técnica y operativa
 ├── sistema/                      # Núcleo del servidor, controladores, interfaz y tests
-│   ├── fonts/                    # Tipografía Geist autoalojada y licencia OFL
-│   ├── panel_server.py           # Servidor HTTP del panel, rutas de chat y proxies medidos
-│   ├── chat_engine.py            # Motor de chat multimodal, extracción de documentos y ZIP
-│   ├── coding_control.py         # Controlador de ciclo de vida en Kaggle y relay SSH
-│   ├── build_single_notebook.py  # Generador de notebooks privados con validación AST
-│   ├── inference_proxy.py        # Proxy loopback con conteo de tokens SSE/JSON
-│   ├── templates.py              # Catálogo curado de modelos GGUF, herramientas y prompts
-│   ├── portability.py            # Exportación pública por lista blanca y respaldos
-│   ├── publicar_codigo.py        # Generador de árbol público verificado para GitHub
-│   └── tests_*.py                # Suite de pruebas unitarias (sin consumir GPU)
+│   ├── core/                     # Servidor HTTP, sesión, seguridad y exportación
+│   ├── web/                      # Panel, login, estilos, tablero y fuentes
+│   │   └── chat/workspace.js     # Conversaciones, adjuntos y generación
+│   ├── chat/                     # SQLite, contexto, adjuntos y multimedia
+│   ├── accounts/                 # Credenciales, notebooks y ciclo de vida
+│   ├── pool/                     # Relay, proxies, perfiles y caché
+│   ├── clients/                  # Configuración de Continue, OpenCode y Paseo
+│   ├── templates/                # Catálogo y controladores
+│   └── tests/                    # Pruebas locales sin consumir cuota GPU
 ├── .gitignore                    # Reglas de exclusión de credenciales y estado privado
 └── README.md                     # Este documento
 ```
@@ -103,15 +98,25 @@ Requisitos: **Python 3.11+** (se recomienda **Python 3.12**).
 ```powershell
 python -m venv sistema/.venv
 sistema/.venv/Scripts/python.exe -m pip install -r sistema/requirements.lock.txt
-sistema/.venv/Scripts/python.exe -m unittest discover -s sistema -p "tests_*.py" -v
+sistema/.venv/Scripts/python.exe -m unittest discover -s sistema/tests -p "tests_*.py" -v
+```
+
+Para comprobar el frontend con Node.js 22 o superior:
+
+```powershell
+node --check sistema/web/dashboard.js
+node --check sistema/web/chat/workspace.js
+node --test sistema/tests/chat-workspace.test.cjs
 ```
 
 En Linux / VPS:
 
 ```bash
-/opt/kaggle-ia/sistema/.venv/bin/python -m unittest discover -s /opt/kaggle-ia/sistema -p "tests_*.py" -v
+/opt/kaggle-ia/sistema/.venv/bin/python -m unittest discover -s /opt/kaggle-ia/sistema/tests -p "tests_*.py" -v
 ```
 
 > **Nota de seguridad:** Las pruebas utilizan dobles de prueba en directorios temporales, no requieren credenciales reales y nunca inician sesiones GPU en Kaggle. Antes de subir cambios a GitHub, ejecutá `python sistema/publicar_codigo.py` o verificá `git status` para asegurarte de no incluir nunca `sistema/.private/`, `kaggle(*.json)`, `sistema/model_profiles.json` ni notebooks `.ipynb`.
 
 Mejoras de contexto, recuperación, almacenamiento, video y caché CPU: [guía de mejoras aplicadas](docs/manual/MEJORAS_APLICADAS_20261104.md).
+
+Resultados por sección y alcance de la verificación: [revisión del panel](docs/manual/REVISION_PANEL_20261105.md).
