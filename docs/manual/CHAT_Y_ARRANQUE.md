@@ -48,3 +48,8 @@ El endpoint compartido `https://ia.example.com/inference/pool/v1` dirige las sol
 El HTML principal carga primero `sistema/web/chat/workspace.js` y después `sistema/web/dashboard.js`. El módulo del chat contiene el editor, historial, adjuntos y seguimiento. El tablero mantiene navegación, arranque y sesión. Ambos se sirven con autenticación desde rutas de assets explícitas.
 
 Revisá las comprobaciones locales del [README](../../README.md) y la [guía de VPS](VPS.md). Para validar una actualización, comprobá el login, las siete vistas, el chat en móvil, las rutas de assets y el estado autenticado de las cuentas. Registrá por separado si hubo envío al controlador, generación real, parada confirmada y reinicio probado.
+
+
+## Componentes del frontend
+
+`sistema/web/design-system.css` concentra los colores, tamaños, focos y estilos de botones, campos, tarjetas, etiquetas y diálogos. Usá las variantes `primary`, `quiet` y `danger` para las acciones. `panel.css` organiza las vistas, la navegación y el chat. Las pantallas comparten controles HTML nativos y los diálogos conservan su manejo de foco y Escape.

@@ -345,7 +345,7 @@ def run():
                 self.send_json(200,{'models':MODELS,'tools':TOOLS,'workflows':WORKFLOWS,'sources':SOURCES,'verified_at':'2026-11-03'});return
             if self.path=='/api/state':self.send_json(200,app.state());return
             if self.path=='/api/session':self.send_json(200,{'username':self.current_session['username'] if self.current_session else 'Local','remote':gate is not None,'csrf':self.current_session['csrf'] if self.current_session else app.token});return
-            assets={'/assets/panel.css':('panel.css','text/css'),'/assets/dashboard.js':('dashboard.js','text/javascript'),'/assets/chat/workspace.js':('chat/workspace.js','text/javascript')}
+            assets={'/assets/design-system.css':('design-system.css','text/css'),'/assets/panel.css':('panel.css','text/css'),'/assets/dashboard.js':('dashboard.js','text/javascript'),'/assets/chat/workspace.js':('chat/workspace.js','text/javascript')}
             if self.path in assets:
                 filename,mime=assets[self.path]
                 asset_file=(BASE/'web'/filename) if (BASE/'web'/filename).exists() else (BASE/filename)
