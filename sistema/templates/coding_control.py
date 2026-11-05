@@ -45,7 +45,7 @@ def probe_state(key):
     from model_profiles import catalog
     profile=catalog()['profiles'][key]
     if not (BASE/f'kaggle({profile["account"]}).json').exists():return 'MISSING'
-    result=subprocess.run([sys.executable,str(Path(__file__)),'state',key],capture_output=True,text=True)
+    result=subprocess.run([sys.executable,str(BASE/'coding_control.py'),'state',key],capture_output=True,text=True)
     value=result.stdout.strip().splitlines()[-1] if result.stdout.strip() else ''
     if result.returncode or value not in {'RUNNING','QUEUED','COMPLETE','ERROR','CANCEL_ACKNOWLEDGED','MISSING'}:
         raise RuntimeError('No se pudo confirmar el estado de la cuenta '+str(profile['account'])+'. Revisa sus credenciales.')
