@@ -182,7 +182,7 @@ async function act(action,key=null,extra={},showActivity=false){
     return false;
   }
 }
-async function refresh(){if(refreshBusy)return;refreshBusy=true;try{const r=await fetch('/api/state',{cache:'no-store'});if(r.status===401){location.replace('/login?expired=1');return;}if(!r.ok)throw Error('No se pudo consultar el estado.');latest=await r.json();render();el('server-dot').className='dot';el('server-status').textContent=latest.server_mode==='vps'?'Panel en la VPS':'Panel local';}catch(e){el('server-dot').className='dot off';el('server-status').textContent='Conexión interrumpida';el('banner').className='banner error';el('banner-text').textContent='No se pudo actualizar el panel. El estado de Kaggle sigue sin confirmar; revisá tu conexión.';if(!el('floating-job').hidden)setJobText('floating-detail','Conexión interrumpida. Se reintentará la consulta.');}finally{refreshBusy=false;}}
+async function refresh(){if(refreshBusy)return;refreshBusy=true;try{const r=await fetch('/api/state',{cache:'no-store'});if(r.status===401){location.replace('/login?expired=1');return;}if(!r.ok)throw Error('No se pudo consultar el estado.');latest=await r.json();render();el('server-dot').className='dot';el('server-status').textContent=latest.server_mode==='vps'?'Panel en la VPS':'Panel local';}catch(e){el('server-dot').className='dot off';el('server-status').textContent='Conexión interrumpida';el('banner').className='banner error';el('banner-text').textContent='No se pudo actualizar el panel. El estado de Kaggle sigue sin confirmar; revisá tu conexión.';if(!el('operation-notice').hidden)setJobText('operation-detail','Conexión interrumpida. Se reintentará la consulta.');}finally{refreshBusy=false;}}
 async function refreshNow(){try{await post('/api/refresh',{});toast('Solicitamos una nueva consulta a Kaggle.');await refresh();}catch(e){toast(e.message,true);}}
 function select(id,accounts,all=false){const n=el(id);if(!n)return;const previous=n.value||(id==='chat-account'?chatPreference('account'):'');const options=(id==='chat-account'&&!accounts.length?'<option value="">Sin cuentas</option>':'')+(all?'<option value="all">Todas las cuentas</option>':'')+accounts.map(a=>`<option value="${esc(a.key)}">${esc(id==='chat-account'?'Cuenta '+a.account+' · '+name(a):name(a)+' · '+(a.label.split(' ')[0]||'IA'))}</option>`).join('');if(n.innerHTML!==options){n.innerHTML=options;if([...n.options].some(o=>o.value===previous))n.value=previous;}}
 
@@ -374,7 +374,6 @@ function renderAccounts(){
       <td role="cell"><div class="table-model">${esc(uiText(a.label))}</div><small>${fmt(a.context)} tokens de contexto</small></td>
       <td role="cell"><div class="row-actions">
         <button type="button" onclick="openChatForAccount('${key}')">${icon('chat')} Chat</button>
-        ${gpuControl(a)}
         <details class="account-more"><summary aria-label="Más acciones para ${label}">Más</summary>
           <div><button type="button" onclick="openAccount('${key}')">Actualizar API</button>
           <button type="button" onclick="renameAccount('${key}')">Renombrar</button>
@@ -464,9 +463,9 @@ function renderJob(){
   }
   const elapsed=j.started_at?Math.max(0,Math.floor(((j.finished_at||Date.now()/1000)-j.started_at)/60)):0;
   setJobText('job-duration',j.started_at?(elapsed?elapsed+' min transcurridos':'Menos de un minuto'):'');
-  el('floating-job').hidden=!running||page==='actividad';
-  setJobText('floating-label',title);
-  setJobText('floating-detail',note);
+  el('operation-notice').hidden=!running||page==='actividad'||page==='chat';
+  setJobText('operation-label',title);
+  setJobText('operation-detail',note);
   const download=j.download&&j.status==='done'?`<a class="download" href="/api/download/${encodeURIComponent(j.download.id)}">${icon('download')}Descargar ${esc(j.download.filename)}</a>${j.download.private?'<p class="hint">Respaldo privado: contiene claves. No lo publiques.</p>':''}`:'';
   html('job-download',download);
   if(download)html('backup-download',download);

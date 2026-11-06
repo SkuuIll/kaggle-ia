@@ -387,8 +387,6 @@ td small{display:block;font-size:11px;color:var(--muted);margin-top:3px}
 .log{background:#080a0e;color:#cbd5e1;border:1px solid var(--line);font:11px/1.8 'Cascadia Code',Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;min-height:140px;max-height:330px;overflow:auto;padding:16px;border-radius:10px}
 .pulse{display:inline-block;width:7px;height:7px;border-radius:50%;background:#60a5fa;animation:pulse 1.5s infinite}
 @keyframes pulse{50%{opacity:.25}}
-.floating{position:fixed;bottom:20px;left:calc(50% + 118px);transform:translateX(-50%);width:min(640px,calc(100% - 275px));display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(23,27,38,.94);backdrop-filter:blur(12px);color:#e2e8f0;border:1px solid rgba(96,165,250,.32);border-radius:11px;box-shadow:0 14px 40px rgba(0,0,0,.6);z-index:40;font-size:12px}
-.floating span{flex:1}
 .toast{position:fixed;right:24px;bottom:22px;z-index:100;background:rgba(23,31,46,.96);backdrop-filter:blur(10px);color:#f1f5f9;border:1px solid rgba(96,165,250,.38);padding:13px 17px;max-width:420px;border-radius:11px;font-size:12px;line-height:1.6;box-shadow:0 12px 35px rgba(0,0,0,.55)}
 .toast.error{background:rgba(48,20,27,.96);border-color:rgba(239,68,68,.45);color:#ffe4e8}
 dialog .buttons{justify-content:flex-end;margin-top:20px}
@@ -1632,22 +1630,12 @@ body[data-current-page="chat"] [data-hide-on="chat"]{display:none!important}
   }
 
   /* Floating job indicator position above bottom nav */
-  .floating {
-    bottom: 68px;
-    left: 14px;
-    right: 14px;
-    transform: none;
-    width: auto;
-  }
   .toast {
     bottom: 72px;
     left: 12px;
     right: 12px;
     max-width: none;
     width: auto;
-  }
-  body[data-current-page="chat"] .floating {
-    bottom: 16px;
   }
   body[data-current-page="chat"] .toast {
     bottom: 20px;
@@ -1937,7 +1925,6 @@ body[data-current-page="chat"] [data-hide-on="chat"]{display:none!important}
 body[data-current-page="chat"] main{padding:18px 24px}
 body[data-current-page="chat"] main>.page-head,
 body[data-current-page="chat"] main>#banner,
-body[data-current-page="chat"] #floating-job{display:none}
 .chat-workspace{
   --chat-canvas:#101419;
   --chat-surface:#171d24;

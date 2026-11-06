@@ -6,6 +6,9 @@
           <h2>Cuentas conectadas</h2>
           <p class="hint">Administrá las credenciales, modelos y sesiones de tus cuentas.</p>
         </div>
+        <button type="button" class="primary operation" onclick="openAccount()">
+          <i data-icon="plus"></i> Agregar cuenta
+        </button>
         <label class="sr-only" for="account-search">Buscar cuenta</label
         ><input
           id="account-search"
@@ -46,7 +49,7 @@
     <article class="panel">
       <h2>Conectar una cuenta</h2>
       <p class="small muted">
-        1. Agregá la API · 2. Elegí el modelo · 3. Encendé y esperá la confirmación.<br />Al terminar, usá
+        1. Agregá la API · 2. Elegí el modelo · 3. Encendé la GPU desde Inicio y esperá la confirmación.<br />Al terminar, usá
         Apagar y verificá el resultado en Actividad.
       </p>
       <a class="small" href="https://www.kaggle.com/settings" target="_blank" rel="noreferrer"

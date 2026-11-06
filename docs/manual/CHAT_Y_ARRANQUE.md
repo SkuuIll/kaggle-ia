@@ -47,7 +47,7 @@ El endpoint compartido `https://ia.example.com/inference/pool/v1` dirige las sol
 
 El navegador recuerda la última conversación, la cuenta elegida y hasta 20 borradores de texto en este dispositivo. El historial del servidor conserva los mensajes enviados. En el menú de cada conversación podés renombrarla o archivarla.
 
-Si la cuenta está apagada, usá **Encender** junto al editor. Podés escribir durante la espera. En Actividad, el panel distingue la preparación, la descarga y la carga cuando el notebook informa esas etapas. **GPU lista** requiere la confirmación del controlador.
+Encendé o apagá la GPU desde **Inicio → Servidores**. El chat muestra el estado de la cuenta seleccionada y permite escribir durante la espera. En Actividad, el panel distingue la preparación, la descarga y la carga cuando el notebook informa esas etapas. **GPU lista** requiere la confirmación del controlador.
 
 ## Cuota de GPU
 
@@ -59,7 +59,7 @@ El frontend está en `sistema/web/frontend/`. `App.vue` arma el panel con compon
 
 `design-system.css` define la paleta oscura, los controles y los estados compartidos. `frontend/workspace.css` define el diseño del panel y del chat sobre los estilos funcionales de `panel.css`. En escritorio el chat deja visibles la navegación principal y el historial. En móvil las dos barras laterales se abren por separado, Escape cierra la que está abierta y el historial de mensajes se desplaza dentro del chat.
 
-Tocá la fila de cuenta y estado en el chat para desplegar los controles de GPU. El selector muestra el número y el nombre de la cuenta. El modelo se identifica debajo del título de la conversación. Los controles Encender y Apagar operan sobre la cuenta seleccionada. Apagar pide confirmación. El panel muestra el envío y sigue la operación hasta que el controlador confirma el resultado. Encender distingue la cola y la carga del modelo. Apagar puede esperar a que termine la operación anterior y después verifica el estado en Kaggle. La notificación final distingue el resultado confirmado de un error. Actividad muestra la etapa actual y ofrece el registro técnico desplegable. Inicio y Cuentas usan los mismos estados y acciones de GPU.
+Tocá la fila de cuenta y estado en el chat para cambiar de cuenta. El selector muestra el número y el nombre de la cuenta. El modelo se identifica debajo del título de la conversación. Los controles Encender y Apagar están en la tarjeta del servidor en Inicio. Apagar pide confirmación. El panel muestra el envío y sigue la operación hasta que el controlador confirma el resultado. Encender distingue la cola y la carga del modelo. Apagar puede esperar a que termine la operación anterior y después verifica el estado en Kaggle. La notificación final distingue el resultado confirmado de un error. Actividad muestra la etapa actual y ofrece el registro técnico desplegable. Inicio y Cuentas muestran los mismos estados de GPU.
 
 ### Compilar
 

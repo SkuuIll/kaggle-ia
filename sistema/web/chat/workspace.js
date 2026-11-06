@@ -160,20 +160,10 @@ function renderChatHeaderStatus(){
   const accKey=conv?.account||el('chat-account')?.value||'rapido';
   const acc=account(accKey);
   const pill=el('chat-gpu-pill');
-  const startBtn=el('chat-quick-start'),stopBtn=el('chat-quick-stop');
   const ready=acc?.state==='RUNNING'&&acc.live?.model_ready===true;
-  let status='Elegí una cuenta configurada para usar el chat.';
-  if(acc?.configured){
-    if(ready)status='';
-    else if(acc.state==='QUEUED')status='Kaggle puso la sesión en cola. Podés preparar tu mensaje mientras esperás.';
-    else if(acc.state==='RUNNING')status='Kaggle está preparando el modelo. Podés escribir mientras esperás.';
-    else if(busy())status='Hay una operación en curso. Podés seguirla en Actividad.';
-    else if(unknown(acc))status='El estado de Kaggle todavía no se confirmó. Revisá Actividad o ejecutá el diagnóstico.';
-    else status='GPU apagada';
-  }
+  const operation=accountPowerJob(acc);
+  let status=acc?.configured?'':'Elegí una cuenta para usar el chat.';
   if(activeRequestId&&chatRequestConversation!==activeChatId)status='Hay una respuesta en curso en otra conversación.';
-  const operation=powerSubmission||visibleJob();
-  if(operation?.status==='running'&&powerActions.has(operation.action))status=describePower(operation).join(' · ');
   const statusNode=el('chat-connection-status');
   if(statusNode.textContent!==status)statusNode.textContent=status;
   statusNode.hidden=!status;
@@ -185,14 +175,7 @@ function renderChatHeaderStatus(){
   el('chat-server-account').title=accountName;
   const stopping=operation?.status==='running'&&['stop','stop_all'].includes(operation.action);
   el('chat-active-subtitle').textContent=acc?uiText(acc.label)+' · '+fmt(acc.context)+' de contexto':'Seleccioná una cuenta para empezar.';
-  const inlineStart=el('chat-compose-start');
-  inlineStart.hidden=!acc?.configured||active(acc)||unknown(acc)||busy();
-  startBtn.hidden=!acc?.configured||active(acc);
-  startBtn.disabled=busy()||!acc||unknown(acc);
-  stopBtn.hidden=!acc?.configured||(!active(acc)&&!unknown(acc));
-  stopBtn.disabled=stopping||Boolean(powerSubmission);
-  const stopTargetsAccount=stopping&&(operation.action==='stop_all'||operation.key===accKey);
-  el('chat-send-btn').disabled=!ready||stopTargetsAccount||sendingChatMessage||uploadingChatFiles||Boolean(activeRequestId);
+  el('chat-send-btn').disabled=!ready||stopping||sendingChatMessage||uploadingChatFiles||Boolean(activeRequestId);
   el('chat-cancel-btn').hidden=!activeRequestId||chatRequestConversation!==activeChatId;
 }
 
@@ -279,14 +262,6 @@ async function deleteChatConversation(targetId=null){
   }catch(e){toast(e.message,true);}
 }
 
-async function startChatAccount(){
-  const key=chatState.conversation?.account||el('chat-account')?.value;
-  if(key)await startAccount(key,false);
-}
-async function stopChatAccount(){
-  const key=chatState.conversation?.account||el('chat-account')?.value;
-  if(key)await stopAccount(key,false);
-}
 async function diagnoseChatAccount(){
   const key=chatState.conversation?.account||el('chat-account')?.value;
   if(key)await quickDiagnose(key);

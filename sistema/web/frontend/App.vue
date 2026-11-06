@@ -67,20 +67,20 @@ import Dialogs from './components/Dialogs.vue';
           <h1 id="page-title">Dashboard</h1>
           <p id="page-description" class="subtitle">Tus modelos, sesiones y consumo, de un vistazo.</p>
         </div>
-        <div class="page-actions">
-          <button class="operation" data-hide-on="chat" onclick="navigate('chat')">
-            <i data-icon="chat"></i>Chatear con IA</button
-          ><button class="danger operation" data-stop="true" onclick="stopAll()">
-            <i data-icon="stop"></i>Apagar todas</button
-          ><button class="primary operation" onclick="openAccount()">
-            <i data-icon="plus"></i>Agregar cuenta
-          </button>
-        </div>
       </div>
       <div id="banner" class="banner" role="status">
         <i data-icon="shield"></i
         ><span id="banner-text">Consultando el estado real de las cuentas en Kaggle…</span>
       </div>
+
+      <aside id="operation-notice" class="operation-notice" aria-label="Seguimiento de operación" hidden>
+        <span class="job-indicator" aria-hidden="true"></span>
+        <div class="job-summary" role="status" aria-atomic="true">
+          <strong id="operation-label">Operación en curso</strong>
+          <span id="operation-detail"></span>
+        </div>
+        <button type="button" class="quiet" onclick="navigate('actividad')">Actividad <i data-icon="arrow"></i></button>
+      </aside>
 
       <Overview />
       <Chat />
@@ -91,14 +91,6 @@ import Dialogs from './components/Dialogs.vue';
       <Settings />
     </main>
   </div>
-  <aside id="floating-job" class="floating" aria-label="Seguimiento de operación" hidden>
-    <span class="job-indicator" aria-hidden="true"></span>
-    <div class="job-summary" role="status" aria-atomic="true">
-      <strong id="floating-label">Operación en curso</strong>
-      <span id="floating-detail"></span>
-    </div>
-    <button type="button" class="quiet" onclick="navigate('actividad')">Actividad <i data-icon="arrow"></i></button>
-  </aside>
   <div id="toast" class="toast" role="status" hidden></div>
   <Dialogs />
   <nav class="mobile-bottom-nav" aria-label="Navegación móvil">

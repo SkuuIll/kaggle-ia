@@ -180,15 +180,19 @@ body *, body *::before, body *::after {
 }
 
 /* Operation tracking stays readable while the server works. */
-#floating-job {
-  gap: 12px;
-  max-width: min(540px, calc(100vw - 28px));
-  border-color: var(--line-strong);
+.operation-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--surface);
-  color: var(--text);
 }
-#floating-job .job-summary { display: grid; flex: 1; gap: 3px; min-width: 0; }
-#floating-detail { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.operation-notice .job-summary { display: grid; flex: 1; gap: 2px; min-width: 0; }
+#operation-detail { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.operation-notice button { flex: 0 0 auto; }
 .job-indicator {
   flex: 0 0 auto;
   width: 14px;
@@ -202,8 +206,8 @@ body *, body *::before, body *::after {
   body .job-indicator { animation: job-progress 1.2s linear infinite !important; }
 }
 @media (max-width: 420px) {
-  #floating-job { align-items: flex-start; flex-wrap: wrap; }
-  #floating-job button { margin-left: auto; }
+  .operation-notice { gap: 7px; }
+  .operation-notice button { padding-inline: 5px; }
 }
 
 /* A compact server summary leaves room for the transcript. */
@@ -357,15 +361,7 @@ td .quota-renewal { margin-top: 7px; }
 .chat-history-menu[open] { width: 100%; padding: 0 5px 5px; }
 .account-more[open] { flex-basis: 100%; }
 .chat-workspace .chat-composer-box { padding: 5px 8px; gap: 2px; }
-.chat-composer-status { display: flex; gap: 8px; align-items: center; }
-.chat-composer-status #chat-connection-status { flex: 1; margin: 0; min-width: 0; font-size: 12px; }
-.chat-composer-status #chat-compose-start {
-  flex: 0 0 auto;
-  min-height: 30px;
-  padding: 2px 7px;
-  font-size: 12px;
-  color: var(--console-accent);
-}
+.chat-workspace #chat-connection-status { margin: 0; font-size: 12px; }
 .chat-workspace .chat-composer-tools { gap: 4px; }
 .chat-workspace :is(.composer-tool-btn, .composer-btn-send) {
   width: 34px;
@@ -379,5 +375,6 @@ td .quota-renewal { margin-top: 7px; }
 .chat-workspace .composer-btn-send:disabled { opacity: .65; }
 @media (pointer: coarse) {
   .chat-workspace :is(.composer-tool-btn, .composer-btn-send) { width: 44px; height: 44px; }
-  .chat-composer-status #chat-compose-start { min-height: 44px; }
 }
+
+.chat-workspace .chat-server-details .chat-session-bar { grid-template-columns: minmax(0, 1fr); }

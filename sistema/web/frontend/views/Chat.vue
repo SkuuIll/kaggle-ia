@@ -122,15 +122,6 @@
                 <option value="">Elegí una cuenta</option>
               </select>
             </div>
-            <div class="chat-gpu-controls" aria-label="Control de GPU">
-              <button id="chat-quick-start" type="button" class="primary" onclick="startChatAccount()" hidden>
-                <i data-icon="play"></i>Encender
-              </button>
-              <button id="chat-quick-stop" type="button" class="danger" onclick="stopChatAccount()" hidden>
-                <i data-icon="stop"></i>Apagar
-              </button>
-              <button type="button" class="quiet" onclick="navigate('actividad')">Actividad</button>
-            </div>
           </div>
         </details>
 
@@ -258,12 +249,7 @@
                 "
               />
             </div>
-            <div class="chat-composer-status">
-              <p id="chat-connection-status" class="hint" role="status"></p>
-              <button id="chat-compose-start" class="quiet" type="button" onclick="startChatAccount()" hidden>
-                <i data-icon="play"></i> Encender
-              </button>
-            </div>
+            <p id="chat-connection-status" class="hint" role="status" hidden></p>
             <p id="chat-upload-status" class="hint" role="status" hidden></p>
             <div id="chat-pending-files" class="chat-pending-files" hidden></div>
             <textarea
