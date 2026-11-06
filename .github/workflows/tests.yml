@@ -1,4 +1,4 @@
-name: Python checks
+name: Project checks
 on: [push, pull_request]
 jobs:
   tests:
@@ -15,3 +15,5 @@ jobs:
           node-version: '22'
       - run: node --check sistema/web/dashboard.js && node --check sistema/web/chat/workspace.js
       - run: node --test sistema/tests/chat-workspace.test.cjs
+      - run: npm --prefix sistema/web/frontend ci
+      - run: npm --prefix sistema/web/frontend run build

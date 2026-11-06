@@ -30,7 +30,7 @@ class Dashboard:
         self.token=secrets.token_urlsafe(32);self.lock=threading.Lock();self.operation=threading.Lock()
         self.snapshots={};self.job={'status':'idle','lines':[]}
         self.runtime={};self.downloads={};self.refresh_trigger=threading.Event()
-        self.cancel_file=BASE/'.private/panel-cancel';self.stop_pending=False
+        self.cancel_file=BASE/'.private/panel-cancel';self.stop_pending=False;self.pending_job=None
         self.store=UsageStore(BASE/'.private/usage.sqlite')
         self.chat=ChatStore(BASE)
     def refresh(self):
@@ -61,7 +61,10 @@ class Dashboard:
         while True:
             self.refresh();self.refresh_trigger.wait(30);self.refresh_trigger.clear()
     def state(self):
-        with self.lock:snapshots=dict(self.snapshots);job={**self.job,'lines':list(self.job.get('lines',[]))}
+        with self.lock:
+            snapshots=dict(self.snapshots)
+            job={**self.job,'lines':list(self.job.get('lines',[]))}
+            pending_job=dict(self.pending_job) if self.pending_job else None
         accounts=[]
         for key,p in catalog()['profiles'].items():
             try:username=json.loads((BASE/f'kaggle({p["account"]}).json').read_text())['username']
@@ -71,7 +74,7 @@ class Dashboard:
                 'label':p['label'],'repo':p['repo'],'filename':p['filename'],'context':p['context'],'idle_minutes':p.get('idle_minutes',15),
                 'max_session_minutes':p.get('max_session_minutes',120),'client_url':(os.environ['IA_PUBLIC_ORIGIN']+'/inference/cuenta'+str(p['account'])+'/v1') if os.environ.get('IA_SERVER_MODE')=='vps' and os.environ.get('IA_PUBLIC_ORIGIN') else 'http://127.0.0.1:'+str(p.get('client_port',p['port']))+'/v1',
                 'usage':self.store.totals(p['account'],username),**(snapshots.get(key,{'state':'CHECKING','quota':None}) if username else {'state':'NOT_CONFIGURED','quota':None})})
-        return {'accounts':accounts,'job':job,'history':self.store.events(),'server_time':time.time(),'server_mode':os.environ.get('IA_SERVER_MODE','local'),'metrics_since':'Solo solicitudes que pasan por este panel; no se recuperan tokens anteriores.'}
+        return {'accounts':accounts,'job':job,'pending_job':pending_job,'history':self.store.events(),'server_time':time.time(),'server_mode':os.environ.get('IA_SERVER_MODE','local'),'metrics_since':'Solo solicitudes que pasan por este panel; no se recuperan tokens anteriores.'}
     def log(self,line):
         if 'PRIVATE KEY' in line or 'KGAT_' in line:return
         with self.lock:
@@ -89,7 +92,15 @@ class Dashboard:
         if action=='start':threading.Thread(target=cancel_wait,daemon=True).start()
         for line in process.stdout:
             line=line.strip()
-            if line.startswith('['):published.set()
+            if line.startswith(('Ejecucion enviada','[')):published.set()
+            stage=None
+            if action=='start':
+                if line.startswith('Ejecucion enviada') or ': QUEUED.' in line:stage='queued'
+                elif ': RUNNING.' in line:stage='loading'
+            elif line.startswith('Parada solicitada'):
+                stage='confirming_stop'
+            if stage:
+                with self.lock:self.job['stage']=stage
             if line.startswith(('[' ,'LISTO:','Configurado:','Comprobando','Parada solicitada','Kaggle confirma','No hay una')):self.log(line)
             elif line.startswith('ERROR:'):self.log('La operacion fallo; no se confirmo su resultado. Revisa la cuenta y Active Events de Kaggle.')
         if process.wait()!=0:raise RuntimeError('No se completo la operacion; no se anuncia inicio o parada confirmados.')
@@ -105,22 +116,33 @@ class Dashboard:
     def begin(self,data):
         if not isinstance(data.get('action'),str) or data['action'] not in ACTIONS:raise ValueError('Accion no reconocida.')
         if data.get('key') is not None and (not isinstance(data['key'],str) or data['key'] not in catalog()['profiles']):raise ValueError('Cuenta invalida.')
+        job={'id':uuid.uuid4().hex,'status':'running','action':data['action'],
+             'key':data.get('key'),'started_at':time.time(),'lines':[]}
         with self.lock:
             if self.stop_pending:raise ValueError('Hay un apagado pendiente; espera a que termine.')
             acquired=self.operation.acquire(blocking=False)
-            if not acquired:
-                if data.get('action') not in ('stop','stop_all'):raise ValueError('Ya hay una operacion en curso. Espera a que termine.')
-                self.stop_pending=True;self.cancel_file.touch()
-        if not acquired:
+            if acquired:
+                self.cancel_file.unlink(missing_ok=True)
+                self.job=job
+            elif data['action'] in ('stop','stop_all'):
+                self.cancel_file.touch()
+                self.stop_pending=True
+                self.pending_job={**job,'stage':'waiting_for_previous'}
+            else:
+                raise ValueError('Ya hay una operacion en curso. Espera a que termine.')
+        if acquired:
+            threading.Thread(target=self.run,args=(data,),daemon=True).start()
+        else:
             self.log('Apagado solicitado durante la operacion; se cancela el inicio y luego se comprueba Kaggle.')
             def priority_stop():
                 self.operation.acquire()
-                with self.lock:self.stop_pending=False;self.job={'status':'running','action':data['action'],'lines':['Comprobando apagado solicitado...']}
+                with self.lock:
+                    self.stop_pending=False
+                    self.pending_job=None
+                    self.job=job
                 self.run(data)
-            threading.Thread(target=priority_stop,daemon=True).start();return
-        self.cancel_file.unlink(missing_ok=True)
-        with self.lock:self.job={'id':uuid.uuid4().hex,'status':'running','action':data.get('action'),'started_at':time.time(),'lines':[]}
-        threading.Thread(target=self.run,args=(data,),daemon=True).start()
+            threading.Thread(target=priority_stop,daemon=True).start()
+        return job['id']
     def run(self,data):
         detail=''
         try:
@@ -238,7 +260,7 @@ class Dashboard:
             self.log(str(error)[:240])
             from operations import failure_detail
             detail=failure_detail(error)
-            with self.lock:self.job['status']='error'
+            with self.lock:self.job['status']='error';self.job['finished_at']=time.time()
         finally:
             try:self.store.event(data.get('action'),data.get('key'),self.job['status'],detail)
             except Exception:self.log('No se pudo guardar el historial de esta operacion.')
@@ -339,7 +361,31 @@ def run():
             if self.path not in ('/','/health'):self.send_error(404);return
             if not self.authorized():return
             self.send_response(200);self.send_header('Cache-Control','no-store');self.end_headers()
+        def send_frontend_asset(self, filename, mime):
+            asset = BASE / 'web' / filename
+            if not asset.is_file():
+                self.send_error(404)
+                return
+            raw = asset.read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', mime)
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            self.wfile.write(raw)
+
         def do_GET(self):
+            public_assets = {
+                '/assets/login.js': ('dist/login/login.js', 'text/javascript; charset=utf-8'),
+                '/assets/login.css': ('dist/login/login.css', 'text/css; charset=utf-8'),
+                '/assets/geist.ttf': ('fonts/Geist-Variable.ttf', 'font/ttf'),
+            }
+            if self.path in public_assets:
+                if not panel_host(self.headers.get('Host', ''), PORT):
+                    self.send_error(403)
+                    return
+                self.send_frontend_asset(*public_assets[self.path])
+                return
             if self.path.split('?')[0]=='/login':
                 if not panel_host(self.headers.get('Host',''),PORT):self.send_error(403);return
                 if gate is None or self.session():
@@ -349,6 +395,13 @@ def run():
                 login_file = (BASE/'web/login.html') if (BASE/'web/login.html').exists() else (BASE/'login.html')
                 self.send_page(login_file.read_text(encoding='utf8'));return
             if not self.authorized():return
+            panel_assets = {
+                '/assets/ui.js': ('dist/ui/ui.js', 'text/javascript; charset=utf-8'),
+                '/assets/ui.css': ('dist/ui/ui.css', 'text/css; charset=utf-8'),
+            }
+            if self.path in panel_assets:
+                self.send_frontend_asset(*panel_assets[self.path])
+                return
             if self.path=='/health':self.send_json(200,{'service':'kaggle-ia-panel'});return
             if self.path=='/api/templates':
                 from templates import MODELS,TOOLS,WORKFLOWS,SOURCES
@@ -538,7 +591,7 @@ def run():
                     self.send_json(200,{'download':{'id':download,'filename':package.name,'private':True}});return
                 if self.path=='/api/model/inspect':self.send_json(200,inspect_model(data.get('repo','')));return
                 if self.path!='/api/action':self.send_error(404);return
-                app.begin(data);self.send_json(202,{'accepted':True})
+                job_id=app.begin(data);self.send_json(202,{'accepted':True,'job_id':job_id})
             except (ValueError,requests.RequestException) as error:self.send_json(400,{'error':str(error)[:240]})
     servers=[]
     try:

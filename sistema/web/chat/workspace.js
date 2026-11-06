@@ -14,9 +14,15 @@ let creatingChat=false,uploadingChatFiles=false,sendingChatMessage=false,chatSel
 let chatConversations=[],activeChatId=null,chatState={conversation:null,messages:[]},pendingAttachments=[],activeRequestId=null,chatPollTimer=null,codeBlocksStore=[];
 
 async function loadChatConversations(){
+  const status=el('chat-history-status');
+  const retry=el('chat-history-retry');
+  status.textContent='Cargando conversaciones…';
+  status.hidden=false;
+  retry.hidden=true;
   try{
     const r=await fetch('/api/chat/conversations',{cache:'no-store'});
-    if(!r.ok)return;
+    if(r.status===401){location.replace('/login?expired=1&next=%2F%23chat');return;}
+    if(!r.ok)throw Error('No se pudo consultar el historial.');
     const d=await r.json();
     chatConversations=d.conversations||[];
     el('chat-count').textContent=chatConversations.length;
@@ -27,7 +33,11 @@ async function loadChatConversations(){
       renderChatHeaderStatus();
       renderChatMessages();
     }
-  }catch(e){}
+    status.hidden=true;
+  }catch{
+    status.textContent='No se pudo cargar el historial.';
+    retry.hidden=false;
+  }
 }
 
 function renderChatList(){
@@ -96,7 +106,7 @@ function renderChatHeaderStatus(){
   const accKey=conv?.account||el('chat-account')?.value||'rapido';
   const acc=account(accKey);
   const pill=el('chat-gpu-pill');
-  const startBtn=el('chat-quick-start');
+  const startBtn=el('chat-quick-start'),stopBtn=el('chat-quick-stop');
   const ready=acc?.state==='RUNNING'&&acc.live?.model_ready===true;
   let status='Elegí una cuenta configurada para usar el chat.';
   if(acc?.configured){
@@ -108,15 +118,23 @@ function renderChatHeaderStatus(){
     else status='Iniciá el servidor de esta cuenta para poder enviar el mensaje.';
   }
   if(activeRequestId&&chatRequestConversation!==activeChatId)status='Hay una respuesta en curso en otra conversación.';
+  const operation=powerSubmission||visibleJob();
+  if(operation?.status==='running'&&powerActions.has(operation.action))status=describePower(operation).join(' · ');
   const statusNode=el('chat-connection-status');
   if(statusNode.textContent!==status)statusNode.textContent=status;
   statusNode.hidden=!status;
   pill.className='badge '+(ready?'on':acc?.state==='ERROR'?'bad':'');
-  pill.textContent=ready?'Listo':acc?.state==='RUNNING'?'Cargando':acc?states[acc.state]||acc.state:'Sin cuenta';
+  const jobAction=busy()?(powerSubmission||visibleJob())?.action:null;
+  const stopping=['stop','stop_all'].includes(jobAction);
+  const gpuState=stopping?'Verificando apagado':jobAction==='start'?'Iniciando GPU':busy()?'Operación en curso':ready?'Lista para chatear':acc?.state==='RUNNING'?'Cargando modelo':acc?states[acc.state]||acc.state:'Sin cuenta';
+  if(pill.textContent!==gpuState)pill.textContent=gpuState;
   el('chat-active-subtitle').textContent=acc?uiText(acc.label)+' · '+fmt(acc.context)+' de contexto':'Seleccioná una cuenta en el encabezado.';
   startBtn.hidden=!acc?.configured||active(acc);
   startBtn.disabled=busy()||!acc||unknown(acc);
-  el('chat-send-btn').disabled=!ready||sendingChatMessage||uploadingChatFiles||Boolean(activeRequestId);
+  stopBtn.hidden=!acc?.configured||(!active(acc)&&!unknown(acc));
+  stopBtn.disabled=stopping||Boolean(powerSubmission);
+  const stopTargetsAccount=stopping&&(operation.action==='stop_all'||operation.key===accKey);
+  el('chat-send-btn').disabled=!ready||stopTargetsAccount||sendingChatMessage||uploadingChatFiles||Boolean(activeRequestId);
   el('chat-cancel-btn').hidden=!activeRequestId||chatRequestConversation!==activeChatId;
 }
 
@@ -202,6 +220,10 @@ async function deleteChatConversation(targetId=null){
 async function startChatAccount(){
   const key=chatState.conversation?.account||el('chat-account')?.value;
   if(key)await startAccount(key,false);
+}
+async function stopChatAccount(){
+  const key=chatState.conversation?.account||el('chat-account')?.value;
+  if(key)await stopAccount(key,false);
 }
 async function diagnoseChatAccount(){
   const key=chatState.conversation?.account||el('chat-account')?.value;
@@ -481,6 +503,7 @@ function renderChatMessages(scrollBottom=false){
   if(!msgs.length){
     box.innerHTML=`<div class="chat-hero">
       <div class="chat-hero-ring">${icon('cpu')}</div>
+      <div class="chat-start-label">ESPACIO DE CHAT</div>
       <h3 class="chat-hero-title">¿Qué querés resolver?</h3>
       <p class="chat-hero-sub">Empezá con un mensaje, un archivo o una de estas ideas.</p>
       <div class="chat-starter-grid">

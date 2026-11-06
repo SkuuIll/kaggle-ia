@@ -18,7 +18,15 @@ def export_program(root,destination):
         for sub in ('core','chat','pool','accounts','clients','templates','web','tests'):
             sub_dir = system / sub
             if sub_dir.exists():
-                files.extend(p for p in sub_dir.rglob('*') if p.is_file() and not any(part in ('.private', '.venv', '__pycache__') or 'kaggle(' in part for part in p.parts) and (p.suffix in ('.py','.ps1','.bat','.html','.css','.js','.cjs','.ttf','.txt','.json') or p.name in ('requirements.txt','requirements.lock.txt','requirements-asr.txt','model_profiles.example.json')))
+                for folder, dirs, filenames in os.walk(sub_dir):
+                    dirs[:] = [d for d in dirs if d not in ('.private', '.venv', '__pycache__', 'node_modules')]
+                    files.extend(
+                        Path(folder) / filename for filename in filenames
+                        if 'kaggle(' not in filename and Path(filename).suffix in (
+                            '.py', '.ps1', '.bat', '.html', '.css', '.js', '.cjs',
+                            '.ttf', '.txt', '.json', '.vue',
+                        )
+                    )
     fonts=system/'fonts'
     if fonts.exists():files.extend(p for p in fonts.iterdir() if p.is_file() and p.name in ('Geist-Variable.ttf','OFL.txt'))
     for directory in ('deployment','docs/manual','.github'):

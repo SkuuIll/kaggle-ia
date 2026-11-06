@@ -1,14 +1,3 @@
-function applyTheme(dark){
-  document.documentElement.dataset.theme=dark?'dark':'light';
-  document.getElementById('theme-toggle')?.setAttribute('aria-pressed',String(dark));
-}
-function toggleTheme(){
-  const dark=document.documentElement.dataset.theme!=='dark';
-  applyTheme(dark);
-  localStorage.setItem('panel-theme',dark?'dark':'light');
-}
-applyTheme((localStorage.getItem('panel-theme')||'light')==='dark');
-
 function setChatSidebar(open,restoreFocus=false){
   const sidebar=el('chat-sidebar'),toggle=el('chat-sidebar-toggle');
   sidebar.classList.toggle('open',open);
@@ -26,11 +15,15 @@ function toggleMobileNav(){
   if(!s)return;
   const isOpen=s.classList.toggle('mobile-open');
   if(b)b.classList.toggle('open',isOpen);
+  el('mobile-menu-btn').setAttribute('aria-expanded',String(isOpen));
+  if(isOpen)s.querySelector('.sidebar-close-btn').focus();
 }
 function closeMobileNav(){
   const s=document.querySelector('.sidebar');
   const b=el('mobile-nav-backdrop');
+  if(s?.classList.contains('mobile-open')&&s.contains(document.activeElement))el('mobile-menu-btn').focus();
   if(s)s.classList.remove('mobile-open');
+  el('mobile-menu-btn').setAttribute('aria-expanded','false');
   if(b)b.classList.remove('open');
 }
 /* Dashboard, T4 TPS Advisor & Multimodal Chat UI. All counters come from authenticated server data. */
@@ -96,7 +89,7 @@ const pages={
   dashboard:['Inicio','RESUMEN DEL ESPACIO','Tus modelos, flujo de trabajo, sesiones y consumo, de un vistazo.'],
   chat:['Chat IA','ESTUDIO MULTIMODAL Y DOCUMENTOS','Conversá con tus modelos, consultá los TPS por respuesta, enviá documentos, fotos o videos y descargá resultados.'],
   cuentas:['Cuentas','CONEXIONES DE KAGGLE','Agregá, identificá y administrá tus cuentas desde un solo lugar.'],
-  modelos:['Modelos y TPS','OPTIMIZACIÓN PARA TESLA T4 ×2','Cambiá a arquitecturas MoE A3B o 1× GPU para alcanzar de 45 a 65 tokens por segundo.'],
+  modelos:['Modelos y TPS','OPTIMIZACIÓN PARA TESLA T4 ×2','Consultá perfiles de rendimiento y ajustá el contexto para tu modelo.'],
   plantillas:['Plantillas','CATÁLOGO DE TU ESPACIO','Instalá modelos optimizados y prepará herramientas con configuraciones listas para usar.'],
   actividad:['Actividad','OPERACIONES Y MONITOREO','Seguí el progreso y consultá los resultados de tus operaciones.'],
   configuracion:['Configuración','PREFERENCIAS DEL ESPACIO','Protegé tus horas, conectá tus herramientas y guardá tus respaldos.']
@@ -105,7 +98,10 @@ const states={RUNNING:'Ejecutando en Kaggle',QUEUED:'En cola',COMPLETE:'Apagada'
 const actions={start:'Iniciar modelo',stop:'Apagar modelo',stop_all:'Apagar todas las IA',model:'Cambiar modelo',credentials:'Actualizar API',timers:'Configurar autoapagado',accounts:'Configurar conexiones',paseo:'Abrir Paseo',add_account:'Agregar cuenta',remove_account:'Quitar cuenta',rename_account:'Cambiar nombre',export_program:'Exportar código',export_private:'Respaldar conexión',restore:'Importar conexión',cache_launch:'Preparar pesos con CPU',cache_prepare:'Preparar caché CPU',cache_status:'Consultar caché CPU',cache_attach:'Verificar caché para el próximo arranque',cache_detach:'Desactivar caché',install_template:'Instalar plantilla de IA',tool_package:'Preparar herramienta privada',profile:'Cambiar perfil de rendimiento',extend:'Extender sesión 30 minutos',runtime_stop_inactividad:'Autoapagado por inactividad','runtime_stop_limite de sesion':'Autoapagado por límite de sesión',runtime_stop_solicitado:'Procesos finalizando por pedido',runtime_stop_error_runtime:'Error en el servidor GPU',client_config:'Preparar configuración de clientes'};
 let latest=null,page='dashboard',accountKey=null,renameKey=null,credentialType='token',fileCredential=null,inspected=null,modelLoaded=null,timersLoaded=null,seenJob=null,toastTimer=null,refreshBusy=false;
 const alerts=new Set();
-const account=k=>latest?.accounts.find(a=>a.key===k),name=a=>a.nickname||a.username||'Cuenta '+a.account,active=a=>['RUNNING','QUEUED'].includes(a.state),unknown=a=>['UNKNOWN','CHECKING'].includes(a.state),busy=()=>latest?.job?.status==='running';
+const powerActions=new Set(['start','stop','stop_all']);
+let powerSubmission=null;
+const visibleJob=()=>latest?.pending_job||latest?.job;
+const account=k=>latest?.accounts.find(a=>a.key===k),name=a=>a.nickname||a.username||'Cuenta '+a.account,active=a=>['RUNNING','QUEUED'].includes(a.state),unknown=a=>['UNKNOWN','CHECKING'].includes(a.state),busy=()=>Boolean(powerSubmission)||visibleJob()?.status==='running';
 function html(id,value){const n=el(id);if(n&&n.innerHTML!==value&&!n.contains(document.activeElement))n.innerHTML=value;}
 function badge(a){return `<span class="badge ${active(a)?'on':unknown(a)||a.state==='ERROR'?'bad':a.configured?'good':''}">${esc(states[a.state]||a.state)}</span>`;}
 function toast(message,error=false){clearTimeout(toastTimer);el('toast').textContent=message;el('toast').className='toast'+(error?' error':'');el('toast').hidden=false;toastTimer=setTimeout(()=>el('toast').hidden=true,error?8000:4500);}
@@ -113,6 +109,7 @@ function navigate(value){
   if(!(value in pages))value='dashboard';
   closeMobileNav();
   if(value!=='chat')setChatSidebar(false);
+  if(page!==value)window.scrollTo({top:0,behavior:'instant'});
   page=value;document.body.dataset.currentPage=value;
   document.querySelectorAll('[data-view]').forEach(n=>n.hidden=n.dataset.view!==value);
   document.querySelectorAll('[data-page]').forEach(n=>{if(n.dataset.page===value)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});
@@ -126,10 +123,33 @@ function navigate(value){
 window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
 function setting(value){document.querySelectorAll('[data-setting]').forEach(n=>n.setAttribute('aria-selected',String(n.dataset.setting===value)));document.querySelectorAll('[data-setting-view]').forEach(n=>n.hidden=n.dataset.settingView!==value);}
 async function post(path,data){const send=()=>fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-IA-Token':token},body:JSON.stringify(data)});let r=await send();if(r.status===403){const state=await fetch('/api/session',{cache:'no-store'});if(state.ok){const session=await state.json();if(session.csrf&&session.csrf!==token){token=session.csrf;r=await send();}}}if(r.status===401){location.replace('/login?expired=1');throw Error('Tu sesión terminó.');}const d=await r.json();if(!r.ok)throw Error(d.error||'No se pudo completar la operación.');return d;}
-async function act(action,key=null,extra={},showActivity=false){try{await post('/api/action',{action,key,...extra});if(showActivity)navigate('actividad');await refresh();return true;}catch(e){toast(e.message,true);return false;}}
-async function refresh(){if(refreshBusy)return;refreshBusy=true;try{const r=await fetch('/api/state',{cache:'no-store'});if(r.status===401){location.replace('/login?expired=1');return;}if(!r.ok)throw Error('No se pudo consultar el estado.');latest=await r.json();render();el('server-dot').className='dot';el('server-status').textContent=latest.server_mode==='vps'?'Panel en la VPS':'Panel local';}catch(e){el('server-dot').className='dot off';el('server-status').textContent='Conexión interrumpida';el('banner').className='banner error';el('banner-text').textContent='No se pudo actualizar el panel. El estado de Kaggle sigue sin confirmar; revisá tu conexión.';}finally{refreshBusy=false;}}
+async function act(action,key=null,extra={},showActivity=false){
+  const power=powerActions.has(action);
+  if(power&&powerSubmission)return false;
+  if(power){
+    powerSubmission={action,key,status:'running',stage:'submitting',started_at:Date.now()/1000};
+    renderJob();
+    renderChatHeaderStatus();
+  }
+  try{
+    const result=await post('/api/action',{action,key,...extra});
+    if(power)Object.assign(powerSubmission,{id:result.job_id,stage:'accepted'});
+    if(showActivity)navigate('actividad');
+    await refresh();
+    return true;
+  }catch(e){
+    if(power){
+      powerSubmission=null;
+      renderJob();
+      renderChatHeaderStatus();
+    }
+    toast(e.message,true);
+    return false;
+  }
+}
+async function refresh(){if(refreshBusy)return;refreshBusy=true;try{const r=await fetch('/api/state',{cache:'no-store'});if(r.status===401){location.replace('/login?expired=1');return;}if(!r.ok)throw Error('No se pudo consultar el estado.');latest=await r.json();render();el('server-dot').className='dot';el('server-status').textContent=latest.server_mode==='vps'?'Panel en la VPS':'Panel local';}catch(e){el('server-dot').className='dot off';el('server-status').textContent='Conexión interrumpida';el('banner').className='banner error';el('banner-text').textContent='No se pudo actualizar el panel. El estado de Kaggle sigue sin confirmar; revisá tu conexión.';if(!el('floating-job').hidden)setJobText('floating-detail','Conexión interrumpida. Se reintentará la consulta.');}finally{refreshBusy=false;}}
 async function refreshNow(){try{await post('/api/refresh',{});toast('Solicitamos una nueva consulta a Kaggle.');await refresh();}catch(e){toast(e.message,true);}}
-function select(id,accounts,all=false){const n=el(id);if(!n)return;const previous=n.value;const options=(all?'<option value="all">Todas las cuentas</option>':'')+accounts.map(a=>`<option value="${esc(a.key)}">${esc(name(a))} · ${esc(a.label.split(' ')[0]||'IA')}</option>`).join('');if(n.innerHTML!==options){n.innerHTML=options;if([...n.options].some(o=>o.value===previous))n.value=previous;}}
+function select(id,accounts,all=false){const n=el(id);if(!n)return;const previous=n.value;const options=(id==='chat-account'&&!accounts.length?'<option value="">Sin cuentas</option>':'')+(all?'<option value="all">Todas las cuentas</option>':'')+accounts.map(a=>`<option value="${esc(a.key)}">${esc(id==='chat-account'?'Cuenta '+a.account+' · '+name(a):name(a)+' · '+(a.label.split(' ')[0]||'IA'))}</option>`).join('');if(n.innerHTML!==options){n.innerHTML=options;if([...n.options].some(o=>o.value===previous))n.value=previous;}}
 
 function modelTelemetry(a){
   const t=templateCatalog?.models?.find(m=>m.id===a.template_id||m.filename===a.filename);
@@ -242,7 +262,69 @@ function renderChart(accounts){const days=Array.from({length:7},(_,i)=>{const d=
 function renderAccounts(){if(!latest)return;const search=el('account-search').value.toLowerCase(),configured=latest.accounts.filter(a=>a.configured),accounts=configured.filter(a=>(name(a)+' '+a.username+' '+a.label).toLowerCase().includes(search));el('accounts-empty').hidden=configured.length>0;html('account-rows',accounts.map(a=>{const tm=modelTelemetry(a);return `<tr><td><b>${esc(name(a))}</b><small>@${esc(a.username||'sin usuario')} · Conexión ${a.account}</small></td><td>${badge(a)}</td><td><div class="table-model" title="${esc(uiText(a.label))}">${esc(uiText(a.label))}</div><small>${icon('activity')} ${esc(tm.tps)} · ${fmt(a.context)} tokens ctx</small></td><td><b>${hours(a.quota?.available_seconds)}</b><small>${a.quota?'Cuota de Kaggle':'Sin confirmar'}</small></td><td><div class="row-actions"><button class="icon-btn" title="Chatear con esta cuenta" onclick="openChatForAccount('${a.key}')">${icon('chat')}</button><button class="icon-btn operation" data-unavailable="${active(a)}" aria-label="Encender ${esc(name(a))}" title="Encender" onclick="startAccount('${a.key}')" ${active(a)?'disabled':''}>${icon('play')}</button><button class="icon-btn operation" data-stop="true" aria-label="Apagar ${esc(name(a))}" title="Apagar" onclick="stopAccount('${a.key}')">${icon('stop')}</button><button class="icon-btn operation" aria-label="Actualizar API de ${esc(name(a))}" title="Actualizar API" onclick="openAccount('${a.key}')">${icon('shield')}</button><button class="icon-btn operation" aria-label="Renombrar ${esc(name(a))}" title="Cambiar nombre" onclick="renameAccount('${a.key}')">${icon('edit')}</button><button class="icon-btn danger operation" aria-label="Quitar ${esc(name(a))}" title="Quitar cuenta" onclick="removeAccount('${a.key}')">${icon('trash')}</button></div></td></tr>`;}).join('')||(configured.length?'<tr><td colspan="5" class="empty">No hay cuentas que coincidan con la búsqueda.</td></tr>':''));}
 function eventRows(events){return events.length?events.map(e=>`<div class="event"><span class="event-icon ${e.status==='error'?'bad':''}">${icon(e.status==='error'?'x':'check')}</span><div class="event-main">${esc(actions[e.action]||'Operación del panel')}<small>${e.profile?'Conexión '+(account(e.profile)?.account||'')+' · ':''}${e.status==='done'?'Completada':'No se completó; revisá el resultado'}${e.detail?' · '+esc(e.detail):''}</small></div><time datetime="${new Date(e.timestamp*1000).toISOString()}">${new Date(e.timestamp*1000).toLocaleString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</time></div>`).join(''):'<div class="empty"><b>Todavía no hay operaciones registradas.</b>Los inicios, apagados y cambios aparecerán acá.</div>';}
 function renderHistory(){if(!latest)return;const filter=el('history-filter').value,events=latest.history||[];html('recent-events',eventRows(events.slice(0,4)));const filtered=events.filter(e=>filter==='all'||e.status===filter);html('operation-history',filtered.length||filter==='all'?eventRows(filtered):'<div class="empty"><b>No hay operaciones con este resultado.</b>Podés cambiar el filtro para ver las demás.</div>');}
-function renderJob(){if(!latest)return;const j=latest.job,running=j.status==='running';el('jobtitle').textContent=running?(actions[j.action]||'Operación')+' en curso':j.status==='done'?'Operación completada':j.status==='error'?'No se completó la operación':'Sin operaciones en curso';el('job-pulse').hidden=!running;el('job-note').textContent=running?'La cola no tiene un tiempo predecible. El inicio y la parada se confirman con Kaggle.':j.status==='error'?'La operación no terminó correctamente. No se anuncia inicio o parada confirmados.':'El inicio y el apagado se confirman contra Kaggle.';const node=el('progress'),text=j.lines?.length?j.lines.join('\n'):'Todavía no hay una operación en esta sesión del servidor.';if(node.textContent!==text){const bottom=node.scrollHeight-node.scrollTop-node.clientHeight<30;node.textContent=text;if(bottom)node.scrollTop=node.scrollHeight;}el('job-duration').textContent=j.started_at?`${Math.max(0,Math.floor(((j.finished_at||Date.now()/1000)-j.started_at)/60))} min transcurridos`:'';el('floating-job').hidden=!running||page==='actividad';el('floating-label').textContent=(actions[j.action]||'Operación')+' en curso';const download=j.download&&j.status==='done'?`<a class="download" href="/api/download/${encodeURIComponent(j.download.id)}">${icon('download')}Descargar ${esc(j.download.filename)}</a>${j.download.private?'<p class="hint">Respaldo privado: contiene claves. No lo publiques.</p>':''}`:'';html('job-download',download);if(download)html('backup-download',download);if(seenJob?.status==='running'&&['done','error'].includes(j.status))toast(j.status==='done'?'Operación completada. Revisá el resultado en Actividad.':'No se completó la operación. Revisá Actividad.',j.status==='error');seenJob={id:j.id,status:j.status};}
+function describePower(job){
+  const target=account(job.key);
+  const label=job.action==='stop_all'?'Todas las cuentas':target?name(target):'GPU';
+  const start=job.action==='start';
+  const title=start?'Encendiendo GPU':'Apagando GPU';
+  if(job.status==='done')return [start?'GPU lista para usar':'Apagado confirmado',start?'El modelo ya responde.':'Kaggle confirmó que no queda una sesión activa.'];
+  if(job.status==='error')return [start?'Encendido sin confirmar':'Apagado sin confirmar','Revisá el detalle en Actividad.'];
+  const stages={
+    submitting:'Enviando la solicitud…',
+    accepted:'Solicitud recibida. Esperando al controlador…',
+    waiting_for_previous:'Esperando a que termine la operación anterior para iniciar el apagado.',
+    queued:'En cola de Kaggle. El tiempo de espera puede variar.',
+    loading:'El modelo está cargando. Esperando que responda.',
+    confirming_stop:'Esperando la confirmación de Kaggle.',
+  };
+  return [title,label+' · '+(stages[job.stage]||(start?'Preparando la sesión en Kaggle.':'Solicitando la parada de la sesión.'))];
+}
+
+function setJobText(id,text){
+  const node=el(id);
+  if(node.textContent!==text)node.textContent=text;
+}
+
+function renderJob(){
+  const serverJob=visibleJob();
+  const submitted=powerSubmission;
+  const acknowledged=submitted?.stage==='accepted'&&serverJob&&(
+    submitted.id?submitted.id===serverJob.id:submitted.action===serverJob.action
+  );
+  if(acknowledged)powerSubmission=null;
+  if(powerSubmission?.stage==='accepted'&&Date.now()/1000-powerSubmission.started_at>45){
+    powerSubmission=null;
+    toast('Se recibió la solicitud, pero el panel no pudo seguirla. Revisá Actividad antes de reintentar.',true);
+  }
+  const j=powerSubmission||serverJob;
+  if(!j)return;
+  const running=j.status==='running',power=powerActions.has(j.action);
+  const [title,note]=power?describePower(j):[
+    running?(actions[j.action]||'Operación')+' en curso':j.status==='done'?'Operación completada':j.status==='error'?'No se completó la operación':'Sin operaciones en curso',
+    running?'Consultá el registro para seguir el progreso.':'El registro muestra el resultado de la operación.',
+  ];
+  setJobText('jobtitle',title);
+  el('job-pulse').hidden=!running;
+  setJobText('job-note',note);
+  const node=el('progress'),text=j.lines?.length?j.lines.join('\n'):'Todavía no hay registros para esta operación.';
+  if(node.textContent!==text){
+    const bottom=node.scrollHeight-node.scrollTop-node.clientHeight<30;
+    node.textContent=text;
+    if(bottom)node.scrollTop=node.scrollHeight;
+  }
+  const elapsed=j.started_at?Math.max(0,Math.floor(((j.finished_at||Date.now()/1000)-j.started_at)/60)):0;
+  setJobText('job-duration',j.started_at?(elapsed?elapsed+' min transcurridos':'Menos de un minuto'):'');
+  el('floating-job').hidden=!running||page==='actividad';
+  setJobText('floating-label',title);
+  setJobText('floating-detail',note);
+  const download=j.download&&j.status==='done'?`<a class="download" href="/api/download/${encodeURIComponent(j.download.id)}">${icon('download')}Descargar ${esc(j.download.filename)}</a>${j.download.private?'<p class="hint">Respaldo privado: contiene claves. No lo publiques.</p>':''}`:'';
+  html('job-download',download);
+  if(download)html('backup-download',download);
+  if(!powerSubmission&&['done','error'].includes(j.status)&&(
+    acknowledged||(seenJob?.status==='running'&&seenJob.id===j.id)
+  ))toast(power?title+'. '+note:j.status==='done'?'Operación completada. Revisá Actividad.':'No se completó la operación. Revisá Actividad.',j.status==='error');
+  if(!powerSubmission)seenJob={id:j.id,status:j.status};
+}
 
 function renderQuickTpsModels(){
   const box=el('quick-tps-models');
@@ -280,7 +362,7 @@ async function copyEndpoint(key){try{await navigator.clipboard.writeText(account
 function closeDialog(id){el(id).close();}
 function ask(title,description,label='Confirmar',danger=false){return new Promise(resolve=>{const d=el('confirm-dialog');el('confirm-title').textContent=title;el('confirm-description').textContent=description;el('confirm-ok').textContent=label;el('confirm-ok').className=danger?'danger':'primary';let answer=false;el('confirm-cancel').onclick=()=>d.close();el('confirm-ok').onclick=()=>{answer=true;d.close();};d.onclose=()=>resolve(answer);d.showModal();});}
 async function startAccount(key,showActivity=true){const a=account(key),other=latest?.accounts.find(b=>b.key!==key&&active(b));if(!a?.configured||active(a)||busy())return;if(other&&!await ask('Cambiar de cuenta',`Primero se apagará ${name(other)}. Después se iniciará ${name(a)}. La GPU consume horas mientras está encendida.`,'Apagar anterior y encender'))return;await act('start',key,{switch:Boolean(other),open_paseo:latest.server_mode!=='vps'},showActivity);}
-async function stopAccount(key){const a=account(key);if(a&&await ask('Apagar '+name(a),'Se solicitará la parada y esperaremos la confirmación de Kaggle. Las solicitudes en curso pueden interrumpirse.','Apagar modelo',true))await act('stop',key,{},true);}
+async function stopAccount(key,showActivity=true){const a=account(key);if(a&&await ask('Apagar '+name(a),'Se solicitará la parada y esperaremos la confirmación de Kaggle. Las solicitudes en curso pueden interrumpirse.','Apagar modelo',true))await act('stop',key,{},showActivity);}
 async function stopAll(){if(await ask('Apagar todas las IA','Se solicitará y comprobará la parada de los modelos configurados en este panel.','Apagar todas',true))await act('stop_all',null,{},true);}
 function openAccount(key=null){if(!latest)return;accountKey=key;const a=account(key);el('account-form').reset();fileCredential=null;el('account-name').value=a?.nickname||'';el('account-username').value=a?.username||'';el('account-dialog-title').textContent=a?'Actualizar API':'Agregar cuenta';el('account-dialog').querySelector('.desc').textContent=!a&&latest.accounts.filter(b=>b.configured).length===2?'Ya usás las dos conexiones. Una API existente se actualizará; para agregar otro usuario, quitá una cuenta desde Cuentas.':'Validamos la API y reconocemos el usuario sin encender una GPU.';el('account-error').textContent='';el('credential-file-note').textContent='La clave no se muestra en pantalla.';credentialMode('token');el('account-dialog').showModal();}
 function credentialMode(mode){credentialType=mode;el('mode-token').setAttribute('aria-selected',String(mode==='token'));el('mode-json').setAttribute('aria-selected',String(mode==='json'));el('credential-token').hidden=mode!=='token';el('credential-json').hidden=mode!=='json';el('account-token').required=mode==='token';}
@@ -426,6 +508,7 @@ function renderPalette(){
   });
 }
 window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.querySelector('.sidebar.mobile-open')){closeMobileNav();return;}
   if(e.key==='Escape'&&el('chat-sidebar').classList.contains('open'))setChatSidebar(false,true);
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
     e.preventDefault();

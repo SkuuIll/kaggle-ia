@@ -101,9 +101,11 @@ sistema/.venv/Scripts/python.exe -m pip install -r sistema/requirements.lock.txt
 sistema/.venv/Scripts/python.exe -m unittest discover -s sistema/tests -p "tests_*.py" -v
 ```
 
-Para comprobar el frontend con Node.js 22 o superior:
+Para compilar y comprobar el frontend con Node.js 22.12 o superior:
 
 ```powershell
+npm --prefix sistema/web/frontend ci
+npm --prefix sistema/web/frontend run build
 node --check sistema/web/dashboard.js
 node --check sistema/web/chat/workspace.js
 node --test sistema/tests/chat-workspace.test.cjs

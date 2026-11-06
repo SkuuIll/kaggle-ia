@@ -45,11 +45,31 @@ El endpoint compartido `https://ia.example.com/inference/pool/v1` dirige las sol
 
 ## Mantenimiento
 
-El HTML principal carga primero `sistema/web/chat/workspace.js` y después `sistema/web/dashboard.js`. El módulo del chat contiene el editor, historial, adjuntos y seguimiento. El tablero mantiene navegación, arranque y sesión. Ambos se sirven con autenticación desde rutas de assets explícitas.
+El frontend está en `sistema/web/frontend/`. `App.vue` arma el panel con componentes para la navegación, diálogos y siete vistas. `Login.vue` gestiona el formulario público y su estado. El panel monta las vistas antes de inicializar `chat/workspace.js` y `dashboard.js`, que conservan los contratos de la API, el historial, el envío de mensajes y las operaciones de GPU. Si modificás una vista, conservá los IDs que usan esos controladores o actualizá ambas partes juntas.
 
-Revisá las comprobaciones locales del [README](../../README.md) y la [guía de VPS](VPS.md). Para validar una actualización, comprobá el login, las siete vistas, el chat en móvil, las rutas de assets y el estado autenticado de las cuentas. Registrá por separado si hubo envío al controlador, generación real, parada confirmada y reinicio probado.
+`design-system.css` define la paleta oscura, los controles y los estados compartidos. `frontend/workspace.css` define el diseño del panel y del chat sobre los estilos funcionales de `panel.css`. En escritorio el chat deja visibles la navegación principal y el historial. En móvil las dos barras laterales se abren por separado, Escape cierra la que está abierta y el historial de mensajes se desplaza dentro del chat.
 
+El selector del chat muestra el número y el nombre de la cuenta. El modelo se identifica debajo del título de la conversación. Los controles Encender y Apagar operan sobre la cuenta seleccionada. Apagar pide confirmación. El panel muestra el envío y sigue la operación hasta que el controlador confirma el resultado. Encender distingue la cola y la carga del modelo. Apagar puede esperar a que termine la operación anterior y después verifica el estado en Kaggle. La notificación final distingue el resultado confirmado de un error. Actividad conserva el registro.
 
-## Componentes del frontend
+### Compilar
 
-`sistema/web/design-system.css` concentra los colores, tamaños, focos y estilos de botones, campos, tarjetas, etiquetas y diálogos. Usá las variantes `primary`, `quiet` y `danger` para las acciones. `panel.css` organiza las vistas, la navegación y el chat. Las pantallas comparten controles HTML nativos y los diálogos conservan su manejo de foco y Escape.
+Desde la raíz del proyecto, con Node.js 22.12 o superior:
+
+```powershell
+npm --prefix sistema/web/frontend ci
+npm --prefix sistema/web/frontend run build
+```
+
+El resultado queda en `sistema/web/dist/ui/` y `sistema/web/dist/login/`. Para iterar con el servidor local abierto, `npm --prefix sistema/web/frontend run dev` recompila el panel al guardar y `run dev:login` hace lo mismo con el acceso. Recargá el navegador para ver el resultado. Modificá los fuentes y regenerá los bundles antes de distribuir.
+
+### Instalar en la VPS
+
+Publicá en conjunto los cuatro archivos de `dist/`, los dos HTML, los controladores del navegador y `sistema/core/panel_server.py`. Python sirve el resultado en el mismo origen que las APIs. Node se usa en la máquina de compilación. La VPS solo necesita los archivos ya compilados.
+
+La primera actualización requiere recargar el servicio Python para incorporar las nuevas rutas de assets. Ese servicio también atiende las APIs de inferencia. Hacé la actualización cuando no haya solicitudes u operaciones en curso. La compilación pública de acceso está separada del panel y de sus controladores, que requieren sesión.
+
+### Verificar
+
+Probá el acceso con sesión vencida y con un error de credenciales, las siete vistas, el historial vacío y con mensajes, el editor y los adjuntos. Revisá el desplazamiento de tablas y código largos en pantallas angostas, el foco de los controles y el cierre de los menús con Escape. Registrá por separado el estado de la web, la generación real y las operaciones de inicio o parada.
+
+Consultá las comprobaciones del [README](../../README.md) y la [guía de VPS](VPS.md).

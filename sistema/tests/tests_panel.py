@@ -25,9 +25,14 @@ class StopPriorityTests(unittest.TestCase):
             app=Dashboard();app.cancel_file=Path(tmp)/'cancel';app.operation.acquire()
             called=threading.Event()
             def stopped(data):
-                self.assertEqual(data['action'],'stop_all');app.operation.release();called.set()
+                self.assertEqual(data['action'],'stop_all')
+                self.assertEqual(app.job['id'],job_id)
+                self.assertIsNone(app.pending_job)
+                app.operation.release();called.set()
             app.run=stopped
-            app.begin({'action':'stop_all'})
+            job_id=app.begin({'action':'stop_all'})
+            self.assertEqual(app.pending_job['id'],job_id)
+            self.assertEqual(app.pending_job['stage'],'waiting_for_previous')
             self.assertTrue(app.cancel_file.exists());self.assertFalse(called.is_set())
             app.operation.release();self.assertTrue(called.wait(2))
 

@@ -2037,7 +2037,7 @@ dialog.chat-drawer h2{margin-top:0}
   .chat-workspace *{transition:none!important}
 }
 
-/* Console palette. A light work surface sits inside the dark navigation shell. */
+/* Shared console layout and chat primitives. */
 .sidebar,.mobile-bottom-nav{
   color-scheme:dark;--text:#fff3e4;--text-soft:#e9ddcf;--muted:#c4b4a4;
   --line:#494039;--surface:#28211e;--surface-2:#382d26;--surface-3:#47372e;
@@ -2251,11 +2251,6 @@ body[data-current-page="chat"] .sidebar .sidebar-close-btn{display:inline-flex!i
 .chat-workspace :is(.chat-conv-item,.chat-starter,.composer-tool-btn):hover{background:var(--surface-3);border-color:var(--line-strong)}
 .chat-workspace :is(.starter-icon-box,.chat-avatar-pill,.tps-pill){background:var(--surface-3);color:var(--text);border-color:var(--line)}
 .chat-workspace .chat-msg table :is(th,td){padding:6px 8px}
-:root[data-theme="dark"] :is(.topbar,.layout .notice,.layout .banner,.layout .banner.active,.layout .banner.error,.launch-status){background:var(--surface);border-color:var(--line);color:var(--text)}
-:root[data-theme="dark"] :is(.chat-workspace .composer-btn-send:disabled,.layout .download,dialog .download){background:var(--surface-3);border-color:var(--line);color:var(--muted)}
-:root[data-theme="dark"] :is(.layout .eyebrow,.layout .kpi-head .icon,.launch-status .launch-label,.launch-status>p){color:var(--text-soft)}
-:root[data-theme="dark"] .chat-workspace{--chat-accent:var(--console-focus)}
-:root[data-theme="dark"] .chat-more summary:hover{background:var(--surface-3);border-color:var(--line-strong)}
 @media(max-width:900px){
   body[data-current-page="chat"] #mobile-menu-btn{width:44px;height:44px}
   .chat-workspace .chat-header{gap:6px}
