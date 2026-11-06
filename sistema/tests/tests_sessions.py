@@ -18,12 +18,33 @@ class SessionTests(unittest.TestCase):
     def test_each_login_gets_new_csrf_and_password_change_revokes_sessions(self):
         s=Sessions();one=s.create('admin');two=s.create('admin')
         self.assertNotEqual(s.get(one)['csrf'],s.get(two)['csrf'])
-        s.clear();self.assertIsNone(s.get(one));self.assertIsNone(s.get(two))
+        guest=s.create('guest')
+        s.revoke_user('admin');self.assertIsNone(s.get(one));self.assertIsNone(s.get(two))
+        self.assertIsNotNone(s.get(guest))
     def test_password_change_requires_current_password(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'auth.json';path.write_text(json.dumps(password_record('admin','old-password-example-123')))
             gate=PasswordGate(path)
-            self.assertFalse(gate.change_password('wrong','new-password-example-456'))
-            self.assertTrue(gate.change_password('old-password-example-123','new-password-example-456'))
+            self.assertFalse(gate.change_password('admin','wrong','new-password-example-456'))
+            self.assertTrue(gate.change_password('admin','old-password-example-123','new-password-example-456'))
             self.assertTrue(gate.check('admin','new-password-example-456'))
             self.assertFalse(gate.check('admin','old-password-example-123'))
+    def test_invited_users_persist_and_cannot_overwrite_owner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'auth.json'
+            owner='owner-password-example'
+            guest='guest-password-example'
+            path.write_text(json.dumps(password_record('admin',owner)))
+            gate=PasswordGate(path)
+            with self.assertRaises(ValueError):gate.create_user('admin',guest)
+            with self.assertRaises(ValueError):gate.create_user('../guest',guest)
+            gate.create_user('guest',guest)
+            with self.assertRaises(ValueError):gate.create_user('guest',owner)
+            gate=PasswordGate(path)
+            self.assertEqual(gate.list_users(),['guest'])
+            self.assertEqual(gate.role('guest'),'observer')
+            self.assertTrue(gate.check('guest',guest))
+            self.assertTrue(gate.change_password('guest',guest,owner))
+            self.assertTrue(gate.check('admin',owner))
+            gate.remove_user('guest')
+            self.assertFalse(PasswordGate(path).check('guest',owner))

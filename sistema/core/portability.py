@@ -24,7 +24,7 @@ def export_program(root,destination):
                         Path(folder) / filename for filename in filenames
                         if 'kaggle(' not in filename and Path(filename).suffix in (
                             '.py', '.ps1', '.bat', '.html', '.css', '.js', '.cjs',
-                            '.ttf', '.txt', '.json', '.vue',
+                            '.ttf', '.txt', '.json', '.vue', '.svg',
                         )
                     )
     fonts=system/'fonts'

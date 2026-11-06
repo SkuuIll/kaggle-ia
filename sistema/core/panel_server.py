@@ -349,6 +349,14 @@ def run():
                 elif self.command in ('GET','HEAD') and not self.path.startswith('/api/') and self.path!='/health':self.redirect('/login')
                 else:self.send_json(401,{'error':'Tu sesion termino. Ingresa nuevamente.'})
                 return False
+            if self.current_session and gate.role(self.current_session['username'])!='owner':
+                allowed={
+                    'GET':{'/','/api/session','/api/overview','/assets/ui.js','/assets/ui.css'},
+                    'HEAD':{'/'},
+                    'POST':{'/api/logout','/api/password'},
+                }
+                if self.path not in allowed.get(self.command,set()):
+                    self.send_json(403,{'error':'Tu acceso es de solo lectura.'});return False
             return True
         def log_message(self,*args):pass
         def send_json(self,status,data):
@@ -356,6 +364,8 @@ def run():
             if self.command!='HEAD':self.wfile.write(body)
         def do_HEAD(self):
             if not panel_host(self.headers.get('Host',''),PORT):self.send_error(403);return
+            if self.path=='/favicon.svg':
+                self.send_frontend_asset('favicon.svg','image/svg+xml');return
             if self.path.split('?')[0]=='/login':
                 self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Cache-Control','no-store');self.end_headers();return
             if self.path not in ('/','/health'):self.send_error(404);return
@@ -372,10 +382,11 @@ def run():
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Cache-Control', 'no-store')
             self.end_headers()
-            self.wfile.write(raw)
+            if self.command!='HEAD':self.wfile.write(raw)
 
         def do_GET(self):
             public_assets = {
+                '/favicon.svg': ('favicon.svg', 'image/svg+xml'),
                 '/assets/login.js': ('dist/login/login.js', 'text/javascript; charset=utf-8'),
                 '/assets/login.css': ('dist/login/login.css', 'text/css; charset=utf-8'),
                 '/assets/geist.ttf': ('fonts/Geist-Variable.ttf', 'font/ttf'),
@@ -407,7 +418,25 @@ def run():
                 from templates import MODELS,TOOLS,WORKFLOWS,SOURCES
                 self.send_json(200,{'models':MODELS,'tools':TOOLS,'workflows':WORKFLOWS,'sources':SOURCES,'verified_at':'2026-11-03'});return
             if self.path=='/api/state':self.send_json(200,app.state());return
-            if self.path=='/api/session':self.send_json(200,{'username':self.current_session['username'] if self.current_session else 'Local','remote':gate is not None,'csrf':self.current_session['csrf'] if self.current_session else app.token});return
+            if self.path=='/api/session':
+                username=self.current_session['username'] if self.current_session else 'Local'
+                self.send_json(200,{'username':username,'remote':gate is not None,'role':gate.role(username) if gate else 'local','csrf':self.current_session['csrf'] if self.current_session else app.token});return
+            if self.path=='/api/overview':
+                with app.lock:snapshots=dict(app.snapshots)
+                overview=[]
+                for key,profile in catalog()['profiles'].items():
+                    account=profile['account']
+                    if not (BASE/f'kaggle({account}).json').is_file():continue
+                    snapshot=snapshots.get(key,{})
+                    state=snapshot.get('state')
+                    status=('ready' if (snapshot.get('live') or {}).get('model_ready') else 'loading') if state=='RUNNING' else (
+                        'queued' if state=='QUEUED' else 'off' if state in ('COMPLETE','CANCEL_ACKNOWLEDGED','MISSING') else 'unknown')
+                    overview.append({'account':account,'status':status})
+                self.send_json(200,{'accounts':overview});return
+            if self.path=='/api/users':
+                if gate is None:self.send_json(400,{'error':'Disponible en el panel remoto.'});return
+                with auth_transaction:users=gate.list_users()
+                self.send_json(200,{'users':users});return
             assets={'/assets/design-system.css':('design-system.css','text/css'),'/assets/panel.css':('panel.css','text/css'),'/assets/dashboard.js':('dashboard.js','text/javascript'),'/assets/chat/workspace.js':('chat/workspace.js','text/javascript')}
             if self.path in assets:
                 filename,mime=assets[self.path]
@@ -448,7 +477,8 @@ def run():
                 raw=path.read_bytes();self.send_response(200);self.send_header('Content-Type',response_mime);self.send_header('X-Content-Type-Options','nosniff');self.send_header('Content-Disposition',disposition);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','private, max-age=3600');self.end_headers();self.wfile.write(raw);return
             if self.path!='/':self.send_error(404);return
             panel_file=(BASE/'web/panel.html') if (BASE/'web/panel.html').exists() else (BASE/'panel.html')
-            page=panel_file.read_text(encoding='utf8').replace('__TOKEN__',self.current_session['csrf'] if self.current_session else app.token)
+            observer=self.current_session and gate.role(self.current_session['username'])=='observer'
+            page=panel_file.read_text(encoding='utf8').replace('__TOKEN__',self.current_session['csrf'] if self.current_session else app.token).replace('__ACCESS__','observer' if observer else 'dashboard')
             self.send_page(page)
         def do_POST(self):
             if self.path=='/api/runtime':
@@ -479,7 +509,7 @@ def run():
             if self.headers.get('Content-Type','').split(';')[0]!='application/json':self.send_error(415);return
             try:
                 length=int(self.headers.get('Content-Length','0'))
-                if not 0<length<=(4096 if self.path in ('/api/login','/api/password') else 24*1024*1024):raise ValueError('Solicitud demasiado grande o vacia.')
+                if not 0<length<=(4096 if self.path in ('/api/login','/api/password','/api/users') else 24*1024*1024):raise ValueError('Solicitud demasiado grande o vacia.')
                 data=json.loads(self.rfile.read(length))
                 if not isinstance(data,dict):raise ValueError('Se esperaba un objeto JSON.')
                 if self.path=='/api/refresh':app.refresh_trigger.set();self.send_json(202,{'accepted':True});return
@@ -539,16 +569,32 @@ def run():
                         if not gate.check(data.get('username'),data.get('password'),source):self.send_json(401,{'error':'Usuario o contrasena incorrectos. Si hubo varios intentos, espera un minuto.'});return
                         previous=self.session_token if self.session() else ''
                         sessions.revoke(previous)
-                        token=sessions.create(gate.record['username'])
+                        token=sessions.create(data['username'])
                     self.send_response(200);self.send_header('Set-Cookie',sessions.cookie(token));self.send_header('Content-Type','application/json');self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(json.dumps({'ok':True,'redirect':login_return_target(data.get('next','/'))}).encode());return
                 if self.path in ('/api/logout','/api/password'):
                     if gate is None:self.send_json(400,{'error':'Accion disponible en el panel remoto.'});return
                     if self.path=='/api/password':
                         with auth_transaction:
-                            if not gate.change_password(data.get('current'),data.get('password'),source):self.send_json(403,{'error':'La contrasena actual no es correcta.'});return
-                            sessions.clear()
+                            current=sessions.get(self.session_token)
+                            if current is None:self.send_json(401,{'error':'Tu sesión terminó.'});return
+                            username=current['username']
+                            if not gate.change_password(username,data.get('current'),data.get('password'),source):self.send_json(403,{'error':'La contraseña actual no es correcta.'});return
+                            sessions.revoke_user(username)
                     else:sessions.revoke(self.session_token)
                     self.send_response(200);self.send_header('Set-Cookie',sessions.cookie(''));self.send_header('Content-Type','application/json');self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(b'{"ok":true}');return
+                if self.path=='/api/users':
+                    if gate is None:self.send_json(400,{'error':'Disponible en el panel remoto.'});return
+                    with auth_transaction:
+                        current=sessions.get(self.session_token)
+                        if not current or gate.role(current['username'])!='owner':
+                            self.send_json(403,{'error':'Solo el administrador puede gestionar usuarios.'});return
+                        username=data.get('username')
+                        if data.get('action')=='create':gate.create_user(username,data.get('password'))
+                        elif data.get('action')=='remove':
+                            gate.remove_user(username);sessions.revoke_user(username)
+                        else:raise ValueError('Acción de usuario inválida.')
+                        users=gate.list_users()
+                    self.send_json(200,{'users':users});return
                 if self.path=='/api/chat/storage':
                     from chat_storage import save_policy
                     self.send_json(200,save_policy(app.chat,data.get('maximum_mb',512),data.get('retention_days',30)));return
@@ -593,6 +639,8 @@ def run():
                 if self.path!='/api/action':self.send_error(404);return
                 job_id=app.begin(data);self.send_json(202,{'accepted':True,'job_id':job_id})
             except (ValueError,requests.RequestException) as error:self.send_json(400,{'error':str(error)[:240]})
+            except OSError:
+                self.send_json(500,{'error':'No se pudo completar la operación en el servidor.'})
     servers=[]
     try:
         servers.append(ThreadingHTTPServer(('127.0.0.1',PORT),Handler))

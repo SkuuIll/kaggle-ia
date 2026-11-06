@@ -1,3 +1,7 @@
+<script setup>
+import PanelUsers from '../components/PanelUsers.vue';
+</script>
+
 <template>
   <section data-view="configuracion" hidden>
     <nav class="subnav" aria-label="Secciones de configuración">
@@ -259,7 +263,7 @@
         <div class="setting-row">
           <div>
             <h3>Contraseña</h3>
-            <p>Al cambiarla se cierran todas las sesiones. Los modelos continúan funcionando.</p>
+            <p>Al cambiarla se cierran las sesiones de tu usuario. Los modelos continúan funcionando.</p>
           </div>
           <button id="change-password" onclick="openPassword()">Cambiar contraseña</button>
         </div>
@@ -270,6 +274,7 @@
           </div>
           <button id="security-logout" onclick="logout()">Cerrar sesión</button>
         </div>
+        <div id="panel-user-management" hidden><PanelUsers /></div>
       </article>
     </div>
   </section>

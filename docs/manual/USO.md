@@ -46,3 +46,11 @@ En **Configuración → Respaldos** disponés de tres acciones:
 - **Exportar código:** genera un archivo ZIP público que contiene únicamente código fuente, activos y documentación, sin claves ni notebooks generados.
 - **Respaldar conexión:** genera un archivo ZIP privado con las credenciales de Kaggle, claves de inferencia, clave SSH de relay y catálogo de perfiles. **No está cifrado:** guardalo en un lugar seguro y nunca lo subas a GitHub.
 - **Importar ZIP:** restaura un respaldo privado previa comprobación de que no haya sesiones GPU activas en las cuentas actuales.
+
+## Acceso al panel web
+
+En **Configuración → Seguridad**, podés cambiar tu contraseña y cerrar la sesión actual. Cambiar la contraseña cierra todas las sesiones de ese usuario.
+
+El administrador puede abrir **Gestionar usuarios invitados**, elegir un nombre y asignarle una contraseña inicial de al menos 16 caracteres. Cada invitado entra por el mismo formulario de acceso y puede cambiar su contraseña. Su vista muestra si las GPU están listas, apagadas o en espera; no permite ver chats, claves ni manejar las cuentas de Kaggle.
+
+**Revocar acceso** impide volver a ingresar y cierra todas las sesiones del invitado. Los registros de acceso guardan hashes, y viven fuera del código público en `sistema/.private/`. Los controles de usuarios están disponibles en el panel HTTPS de la VPS.

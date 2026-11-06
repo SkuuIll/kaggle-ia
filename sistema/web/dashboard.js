@@ -689,7 +689,7 @@ async function downloadPrivateFile(event,link){
   finally{delete link.dataset.downloading;link.removeAttribute('aria-busy');}
 }
 document.addEventListener('click',event=>{const link=event.target.closest?.('a[href]');if(link)downloadPrivateFile(event,link);});
-fetch('/api/session').then(r=>r.ok?r.json():null).then(s=>{if(!s)return;if(s.csrf)token=s.csrf;el('session-user').textContent=s.username;el('avatar').textContent=s.username.slice(0,2).toUpperCase();el('security-username').textContent=s.username;el('logout-button').hidden=!s.remote;el('security-logout').disabled=!s.remote;el('change-password').disabled=!s.remote;}).catch(()=>{});
+fetch('/api/session').then(r=>r.ok?r.json():null).then(s=>{if(!s)return;if(s.csrf)token=s.csrf;el('session-user').textContent=s.username;el('avatar').textContent=s.username.slice(0,2).toUpperCase();el('security-username').textContent=s.username;el('logout-button').hidden=!s.remote;el('security-logout').disabled=!s.remote;el('panel-user-management').hidden=s.role!=='owner';el('change-password').disabled=!s.remote;}).catch(()=>{});
 bindChatDropzone();
 loadTemplates();
 navigate(location.hash.slice(1)||'dashboard');

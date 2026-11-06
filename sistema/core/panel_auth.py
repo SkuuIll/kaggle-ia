@@ -1,5 +1,5 @@
 """Password verification for the HTTPS dashboard; credentials never enter logs."""
-import base64,hashlib,hmac,json,secrets,time,threading
+import base64,hashlib,hmac,json,os,re,secrets,tempfile,time,threading
 from pathlib import Path
 
 def password_record(username,password):
@@ -11,17 +11,52 @@ def password_record(username,password):
 class PasswordGate:
     def __init__(self,path):
         self.path=Path(path);self.record=json.loads(self.path.read_text(encoding='utf8'));self.failures={};self.lock=threading.Lock()
+        self.users_path=self.path.with_name('panel-users.json')
+        self.users=json.loads(self.users_path.read_text(encoding='utf8')) if self.users_path.exists() else {}
+    @staticmethod
+    def _save(path,record):
+        fd,name=tempfile.mkstemp(prefix=path.name+'.',suffix='.pending',dir=path.parent)
+        temp=Path(name)
+        try:
+            with os.fdopen(fd,'w',encoding='utf8') as stream:json.dump(record,stream)
+            temp.replace(path)
+        finally:
+            temp.unlink(missing_ok=True)
+    def role(self,username):
+        if username==self.record['username']:return 'owner'
+        if username in self.users:return 'observer'
+        return None
+    def list_users(self):
+        return sorted(self.users)
+    def create_user(self,username,password):
+        if not isinstance(username,str) or not re.fullmatch(r'[a-z0-9][a-z0-9_.-]{2,31}',username):
+            raise ValueError('Usá de 3 a 32 letras minúsculas, números, puntos, guiones o guiones bajos.')
+        if self.role(username) or username.casefold()==self.record['username'].casefold():
+            raise ValueError('Ese usuario ya existe.')
+        if len(self.users)>=25:raise ValueError('Se alcanzó el límite de 25 usuarios invitados.')
+        if not isinstance(password,str) or not 16<=len(password)<=256:
+            raise ValueError('Usá una contraseña de 16 a 256 caracteres.')
+        users={**self.users,username:password_record(username,password)}
+        self._save(self.users_path,users);self.users=users
+    def remove_user(self,username):
+        if not isinstance(username,str) or username not in self.users or self.role(username)!='observer':
+            raise ValueError('Usuario invitado no encontrado.')
+        users={key:value for key,value in self.users.items() if key!=username}
+        self._save(self.users_path,users);self.users=users
     def check(self,username,password,source='local'):
         if not isinstance(username,str) or not isinstance(password,str) or ':' in username or len(username)>128 or len(password)>256:return False
-        header='Basic '+base64.b64encode((username+':'+password).encode()).decode()
+        try:header='Basic '+base64.b64encode((username+':'+password).encode()).decode()
+        except UnicodeError:return False
         return self.verify(header,source)
-    def change_password(self,current,new,source='local'):
-        if not self.check(self.record['username'],current,source):return False
+    def change_password(self,username,current,new,source='local'):
+        if not self.check(username,current,source):return False
         if not isinstance(new,str) or not 16<=len(new)<=256:raise ValueError('Usa entre 16 y 256 caracteres.')
-        record=password_record(self.record['username'],new)
-        with self.lock:
-            temp=self.path.with_suffix('.pending');temp.write_text(json.dumps(record),encoding='utf8');temp.chmod(0o600);temp.replace(self.path)
-            self.record=record;self.failures={}
+        record=password_record(username,new)
+        if self.role(username)=='owner':
+            self._save(self.path,record);self.record=record
+        else:
+            users={**self.users,username:record}
+            self._save(self.users_path,users);self.users=users
         return True
     def verify(self,header,source='local'):
         with self.lock:
@@ -31,8 +66,9 @@ class PasswordGate:
         try:
             if not header.startswith('Basic ') or len(header)>2048:return False
             user,password=base64.b64decode(header[6:],validate=True).decode().split(':',1)
-            digest=hashlib.scrypt(password.encode(),salt=bytes.fromhex(self.record['salt']),n=16384,r=8,p=1,dklen=32)
-            valid=hmac.compare_digest(user.encode(),self.record['username'].encode()) & hmac.compare_digest(digest.hex(),self.record['digest'])
+            record=self.record if user==self.record['username'] else self.users.get(user,self.record)
+            digest=hashlib.scrypt(password.encode(),salt=bytes.fromhex(record['salt']),n=16384,r=8,p=1,dklen=32)
+            valid=hmac.compare_digest(user.encode(),record['username'].encode()) & hmac.compare_digest(digest.hex(),record['digest'])
         except (ValueError,UnicodeError):valid=False
         if not valid:
             with self.lock:
@@ -59,6 +95,8 @@ class Sessions:
             self.items.pop(token,None);return None
     def revoke(self,token):
         with self.lock:self.items.pop(token,None)
+    def revoke_user(self,username):
+        with self.lock:self.items={k:v for k,v in self.items.items() if v['username']!=username}
     def clear(self):
         with self.lock:self.items.clear()
     def cookie(self,token):

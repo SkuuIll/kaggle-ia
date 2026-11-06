@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import App from './App.vue';
+import Observer from './views/Observer.vue';
 import '../design-system.css';
 import '../panel.css';
 import './workspace.css';
@@ -17,9 +18,13 @@ function loadController(url) {
 }
 
 try {
-  createApp(App).mount(root);
-  await loadController('/assets/chat/workspace.js');
-  await loadController('/assets/dashboard.js');
+  if (document.documentElement.dataset.access === 'observer') {
+    createApp(Observer).mount(root);
+  } else {
+    createApp(App).mount(root);
+    await loadController('/assets/chat/workspace.js');
+    await loadController('/assets/dashboard.js');
+  }
 } catch {
   const message = document.createElement('p');
   message.className = 'boot-status';

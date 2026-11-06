@@ -378,3 +378,13 @@ td .quota-renewal { margin-top: 7px; }
 }
 
 .chat-workspace .chat-server-details .chat-session-bar { grid-template-columns: minmax(0, 1fr); }
+.panel-users { margin-top: 1rem; }
+.panel-users form, .observer-shell form { margin-top: 1rem; }
+.panel-user-list { list-style: none; padding: 0; }
+.panel-user-list strong { overflow-wrap: anywhere; }
+.panel-user-list .setting-row { flex-wrap: wrap; }
+.observer-shell { width: min(100% - 2rem, 38rem); margin: 2rem auto; display: grid; gap: 1rem; }
+.observer-shell .panel { min-width: 0; }
+.observer-header { display: flex; align-items: center; gap: .75rem; }
+.observer-header p { margin: 0; }
+.panel-users .form-error, .observer-shell .form-error { color: #ffb6b8; }
