@@ -422,3 +422,41 @@ td .quota-renewal { margin-top: 7px; }
 .client-picker input { width: auto; margin: 0; accent-color: var(--console-accent); }
 .client-picker label span { grid-column: 2; color: var(--muted); font-size: 12px; }
 .client-actions { margin: 10px 0; }
+
+.chat-workspace .chat-code-file {
+  min-width: 0;
+  margin: 12px 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.chat-code-file-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+.chat-code-file-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--surface-3);
+  color: var(--console-accent);
+}
+.chat-code-file-name strong { display: block; overflow-wrap: anywhere; }
+.chat-code-file-name small { display: block; color: var(--muted); }
+.chat-code-file-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.chat-code-file-actions button { min-height: 40px; padding: 6px 9px; }
+.chat-code-file :is(details, pre) { margin: 0; }
+.chat-code-file summary { padding: 9px 12px; cursor: pointer; color: var(--text-soft); font-size: 13px; }
+.chat-code-file > details { border-top: 1px solid var(--line); }
+.chat-code-file[open] > pre, .chat-code-file details[open] > pre { border-radius: 0 0 9px 9px; }
+.chat-file-pending { color: var(--muted); }
+@media (max-width: 540px) {
+  .chat-code-file-head { grid-template-columns: auto minmax(0, 1fr); }
+  .chat-code-file-actions { grid-column: 1 / -1; }
+  .chat-code-file-actions button { min-height: 44px; }
+}

@@ -394,36 +394,91 @@ function renderPendingFiles(){
 /* Markdown, Code Blocks & Media Rendering */
 const EXT_BY_LANG={python:'py',py:'py',javascript:'js',js:'js',typescript:'ts',ts:'ts',html:'html',css:'css',json:'json',sql:'sql',bash:'sh',sh:'sh',shell:'sh',powershell:'ps1',yaml:'yml',yml:'yml',markdown:'md',md:'md',cpp:'cpp',c:'c',csharp:'cs',java:'java',go:'go',rust:'rs'};
 
-function renderMarkdown(text,msgIndex){
+
+const FILE_DEFAULTS={html:'index.html',css:'styles.css',js:'script.js',ts:'script.ts',py:'main.py',md:'README.md'};
+const CODE_EXTENSIONS=new Set(Object.values(EXT_BY_LANG));
+
+function codeFileInfo(info,heading=''){
+  const [first='',name='']=info.trim().split(/\s+/);
+  const lang=first.toLowerCase();
+  const ext=Object.hasOwn(EXT_BY_LANG,lang)?EXT_BY_LANG[lang]:'';
+  const candidate=(ext?name||heading:first||heading).replace(/^filename=/i,'').replace(/^["']|["']$/g,'');
+  const match=candidate.match(/^([a-z0-9][a-z0-9._-]{0,79})\.([a-z0-9]{1,5})$/i);
+  const suffix=match?.[2].toLowerCase();
+  const portable=match&&!/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(match[1]);
+  const filename=portable&&CODE_EXTENSIONS.has(suffix)&&(!ext||suffix===ext)?candidate:'';
+  return {lang:ext?lang:filename?suffix:'código',ext:ext||(filename?suffix:'txt'),filename};
+}
+
+function renderCodeBlock(info,code,files,closed,heading){
+  const {lang,ext,filename}=codeFileInfo(info,heading);
+  const file=files&&(filename||ext==='html'||(ext!=='txt'&&code.trim().split(/\r?\n/).length>=8));
+  if(!closed)return file
+    ?'<p class="chat-file-pending" role="status">Preparando archivo…</p>'
+    :'<pre><code>'+esc(code)+'</code></pre>';
+  const idx=codeBlocksStore.length;
+  const name=file?(filename||FILE_DEFAULTS[ext]||'archivo.'+ext):'snippet-'+(idx+1)+'.'+ext;
+  codeBlocksStore.push({code,filename:name});
+  const copy=`<button type="button" id="copy-btn-${idx}" onclick="copyCodeBlock(${idx})">${icon('copy')}Copiar</button>`;
+  const download=`<button type="button" onclick="downloadCodeBlock(${idx})">${icon('download')}${file?'Descargar':'.'+ext}</button>`;
+  const source=`<pre><code>${esc(code.replace(/\r?\n$/,''))}</code></pre>`;
+  if(!file)return `<div class="code-block"><div class="code-block-bar"><span>${esc(lang)}</span><div class="buttons">${copy}${download}</div></div>${source}</div>`;
+  const lines=code.replace(/\r?\n$/,'').split(/\r?\n/).length;
+  return `<article class="chat-code-file">
+    <div class="chat-code-file-head">
+      <span class="chat-code-file-icon" aria-hidden="true">${icon('file')}</span>
+      <div class="chat-code-file-name"><strong>${esc(name)}</strong><small>${esc(ext.toUpperCase())} · ${lines} ${lines===1?'línea':'líneas'}</small></div>
+      <div class="chat-code-file-actions">${download}${copy}</div>
+    </div>
+    <details><summary>Ver código</summary>${source}</details>
+  </article>`;
+}
+
+function renderPartialCode(info,code,files,streaming){
+  if(streaming)return renderCodeBlock(info,code,files,false);
+  if(!files)return '<pre><code>'+esc(code)+'</code></pre>';
+  return '<details class="chat-code-file"><summary>Ver código incompleto</summary><pre><code>'+esc(code)+'</code></pre></details>';
+}
+
+function renderMarkdown(text,{files=false,streaming=false}={}){
   if(!text)return '';
   let thinkHtml='';
   let content=String(text);
-  const thinkMatch=content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+  const thinkMatch=content.match(/^\s*<think>([\s\S]*?)(?:<\/think>|$)/i);
   if(thinkMatch){
     const rawThinking=thinkMatch[1].trim();
-    content=content.replace(/<think>[\s\S]*?(?:<\/think>|$)/i,'').trim();
+    content=content.slice(thinkMatch[0].length);
     if(rawThinking){
-      const isStillThinking=!thinkMatch[0].includes('</think>');
+      const isStillThinking=!/<\/think>$/i.test(thinkMatch[0]);
       const label=isStillThinking?'Pensando…':'Proceso de razonamiento';
       const iconHtml=isStillThinking?'<i class="pulse"></i>':icon('cpu');
       thinkHtml=`<details class="chat-think-box" ${isStillThinking?'open':''}><summary>${iconHtml} <span>${label}</span></summary><div class="chat-think-content">${formatProse(rawThinking)}</div></details>`;
     }
   }
-  if(!content&&thinkHtml)return thinkHtml;
-  const parts=content.split(/```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g);
-  let out=thinkHtml;
-  for(let i=0;i<parts.length;i+=3){
-    const prose=parts[i];
-    if(prose)out+=formatProse(prose);
-    if(i+2<parts.length){
-      const lang=(parts[i+1]||'txt').toLowerCase();
-      const code=parts[i+2]||'';
-      const idx=codeBlocksStore.push({lang,code})-1;
-      const ext=EXT_BY_LANG[lang]||'txt';
-      out+=`<div class="code-block"><div class="code-block-bar"><span>${esc(lang||'código')}</span><div class="buttons"><button type="button" id="copy-btn-${idx}" onclick="copyCodeBlock(${idx})">${icon('copy')}Copiar</button><button type="button" onclick="downloadCodeBlock(${idx},'snippet-${idx+1}.${ext}')">${icon('download')}.${ext}</button></div></div><pre><code>${esc(code.replace(/\n$/,''))}</code></pre></div>`;
+  if(files&&/^\s*(?:<!doctype\s+html\b[^>]*>|<html(?:\s|>))/i.test(content)){
+    const complete=/<\/html>\s*$/i.test(content);
+    return thinkHtml+(complete&&!streaming?renderCodeBlock('html',content,files,true):renderPartialCode('html',content,files,streaming));
+  }
+  let out=thinkHtml,prose='',fence=null;
+  for(const line of content.split(/(?<=\n)/)){
+    const marker=line.match(/^ {0,3}(\x60{3,}|~{3,})([^\r\n]*)\r?\n?$/);
+    if(fence){
+      if(marker&&marker[1][0]===fence.marker[0]&&marker[1].length>=fence.marker.length&&!marker[2].trim()){
+        out+=renderCodeBlock(fence.info,fence.code,files,true,fence.heading);
+        fence=null;
+      }else fence.code+=line;
+    }else if(marker){
+      const heading=prose.trimEnd().split('\n').at(-1)?.trim()
+        .replace(/^#{1,6}\s+/,'').replace(/:$/,'').replace(/^[*`]+|[*`]+$/g,'');
+      out+=formatProse(prose);
+      prose='';
+      fence={marker:marker[1],info:marker[2],heading,code:''};
+    }else{
+      prose+=line;
     }
   }
-  return out;
+  if(fence)return out+renderPartialCode(fence.info,fence.code,files,streaming);
+  return out+formatProse(prose);
 }
 
 function formatProse(raw){
@@ -477,10 +532,10 @@ function downloadBlob(content,filename,mime='text/plain;charset=utf-8'){
   setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
-function downloadCodeBlock(idx,filename){
+function downloadCodeBlock(idx){
   const item=codeBlocksStore[idx];
   if(!item)return;
-  downloadBlob(item.code,filename);
+  downloadBlob(item.code,item.filename);
 }
 
 function resetAttachmentViewer(){
@@ -602,7 +657,7 @@ function renderChatMessages(scrollBottom=false){
     const tpsBadge=tele&&tele.tps>0?`<span class="tps-pill" title="${native?'Velocidad de generación informada por el motor':'Promedio de la solicitud, incluida la espera'}">${icon('activity')} ${fmt(tele.tps)} TPS ${native?'de generación':'promedio'} · ${fmt(tele.tokens)} tokens</span>`:'';
     const atts=(m.attachments||[]).length?`<div class="chat-att-grid">${m.attachments.map(renderAttachmentCard).join('')}</div>`:'';
     const waiting=m.thinking?'El modelo está razonando…':'Esperando respuesta del modelo…';
-    const body=m.content?`<div class="chat-msg-body">${renderMarkdown(m.status==='error'?m.content.replace(/^\u26a0\uFE0F?\s*/,''):m.content,i)}</div>`:(m.status==='running'?`<div class="chat-msg-body muted"><i class="pulse"></i> ${waiting}</div>`:'');
+    const body=m.content?`<div class="chat-msg-body">${renderMarkdown(m.status==='error'?m.content.replace(/^\u26a0\uFE0F?\s*/,''):m.content,{files:!isUser,streaming:m.status==='running'})}</div>`:(m.status==='running'?`<div class="chat-msg-body muted"><i class="pulse"></i> ${waiting}</div>`:'');
     return `<article class="chat-msg ${esc(m.role)}"><div class="chat-msg-head">${roleLabel}<div class="chat-msg-meta">${tpsBadge}<span class="chat-time-tag">${m.status==='running'?'Generando…':timeStr}</span></div></div>${atts}${body}<div class="chat-msg-foot"><button type="button" class="chat-foot-btn" onclick="copyChatMessage(${i})">${icon('copy')}<span>Copiar</span></button>${!isUser?`<button type="button" class="chat-foot-btn" onclick="downloadChatMessage(${i})">${icon('download')}<span>Descargar .md</span></button>`:''}</div></article>`;
   }).join('');
   if(nearBottom)scroll.scrollTop=scroll.scrollHeight;
