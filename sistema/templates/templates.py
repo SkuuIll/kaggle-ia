@@ -23,6 +23,13 @@ MODELS=[
  {'id':'qwen38-heretic-rvn','name':'Qwen3.8 27B RVN Heretic · Multilingual MTP','category':'Modelo Único · 27B DeltaNet + MTP (128k)','repo':'0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF','filename':'RVN-Q4_K_M-multilingual-mtp.gguf','revision':'ab8d7bd81d03117501e4da60cccdff4c80f0eea0','size_bytes':16998720992,'context':131072,'native_context':262144,'license':'Apache-2.0','parameters':{'draft_num_predict':2,'num_batch':512},'tested':True,
   'arch':'27B Híbrido DeltaNet + MTP (draft=2)','tps_range':'26–36 TPS','vram_fit':'17.0 GB pesos · 15.0 GB libres (KV -75%)','speed_badge':'Único activo · ARA KL 0.0085 + MTP','tps_tier':'ultra',
   'description':'Refinado con 3 pasadas ARA (0-1% rechazos, preservación KL 0.0085), calibración multilingüe/código v5, cabezal MTP optimizado (draft_num_predict=2, +59% TPS en Q4_K_M), reasoning_effort=medium y 48 capas Gated DeltaNet (-75% caché KV en 128k).'},
+ {'id':'ornith15-abliterated-q4','name':'Ornith 1.5 35B-A3B Abliterated · Q4_K_M','category':'Experimental · llama.cpp',
+  'repo':'mradermacher/Ornith-1.5-35B-A3B-abliterated-GGUF',
+  'filename':'Ornith-1.5-35B-A3B-abliterated.Q4_K_M.gguf',
+  'revision':'5b9e26bb6eda5406e0ded27a9659bfb71c918c5b','size_bytes':21166758528,
+  'context':32768,'native_context':262144,'license':'MIT','engine':'llama',
+  'parameters':{},'tested':False,'effort':'none','arch':'35B MoE · 3B activos',
+  'description':'Pendiente de prueba en dos T4. Perfil inicial de 32.768 tokens con KV Q8_0. Falta medir velocidad, memoria y llamadas a herramientas.'},
 ]
 for _model in MODELS:_model['low_restriction']=True
 TOOLS=[

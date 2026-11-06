@@ -50,7 +50,7 @@ class TemplateTests(unittest.TestCase):
  def test_unknown_template_never_becomes_a_shell_command(self):
   with self.assertRaises(ValueError):get_template('https://example.test/install.sh')
  def test_budget_fits_reported_native_context(self):
-  self.assertEqual({t['id'] for t in MODELS},{'qwen36-heretic-compact','thinkingcap-nemotron','qwen38-heretic-exl3','qwen38-heretic-rvn'})
+  self.assertEqual({t['id'] for t in MODELS},{'qwen36-heretic-compact','thinkingcap-nemotron','qwen38-heretic-exl3','qwen38-heretic-rvn','ornith15-abliterated-q4'})
   for t in MODELS:self.assertLessEqual(t['context'],t['native_context']);self.assertLess(t['size_bytes'],24*1024**3)
 
  def test_switching_templates_clears_previous_engine_and_cache(self):
