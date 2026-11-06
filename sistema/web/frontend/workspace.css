@@ -241,3 +241,38 @@ body.chat-keyboard-open .chat-server-details[open] .chat-session-bar { display: 
 .job-stages li[aria-current="step"] { color: var(--text); border-color: var(--line-strong); background: var(--surface-3); }
 .operation-log { margin-top: 14px; border-top: 1px solid var(--line); }
 .operation-log summary { min-height: 44px; align-content: center; cursor: pointer; }
+
+/* Keep renewal and available hours distinct on narrow displays. */
+.quota-head { flex-wrap: wrap; font-size: 14px; }
+.quota-head b { overflow-wrap: anywhere; }
+.quota-head strong { color: var(--text-soft); font-size: 14px; }
+.quota-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 12px 0;
+}
+.quota-breakdown dt { color: var(--muted); font-size: 12px; }
+.quota-breakdown dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.quota-reset {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 5px 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 9px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.quota-renewal { display: grid; gap: 2px; color: var(--muted); font-size: 12px; }
+.quota-renewal strong { color: var(--console-accent); font-variant-numeric: tabular-nums; }
+td .quota-renewal { margin-top: 7px; }
+
+.token-days { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.token-days li { display: grid; grid-template-columns: 5ch minmax(0, 1fr) minmax(5ch, auto); align-items: center; gap: 8px; font-size: 13px; }
+.token-days time { color: var(--muted); }
+.token-day-bar { height: 8px; display: flex; overflow: hidden; border-radius: 5px; background: var(--surface-3); }
+.token-day-bar i { background: #60a5fa; }
+.token-day-bar i + i { background: #8497b6; }
+.token-day-total { text-align: end; font-variant-numeric: tabular-nums; }
+.legend i.out { background: #8497b6; }

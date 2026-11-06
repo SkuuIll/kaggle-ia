@@ -43,6 +43,10 @@ Pulsá **Vista previa** en la tarjeta del archivo para abrir el visor sin salir 
 
 El endpoint compartido `https://ia.example.com/inference/pool/v1` dirige las solicitudes a una cuenta cuyo relay ya responde. El historial del Chat IA se guarda en la VPS y se puede consultar con la GPU apagada. Cuando no hay un relay disponible, iniciá una cuenta desde el panel. La rotación automática y el precalentamiento aparecen en notas históricas como diseño, pero el servicio actual no ejecuta ese orquestador.
 
+## Cuota de GPU
+
+Inicio y Cuentas muestran las horas y la fecha de renovación que informa Kaggle. El contador se actualiza en el navegador y muestra la fecha en la zona horaria del dispositivo. Al llegar la hora, el panel espera una nueva lectura de Kaggle antes de mostrar la siguiente renovación. Si falta la fecha o la cuota, se indica que el dato sigue sin confirmar.
+
 ## Mantenimiento
 
 El frontend está en `sistema/web/frontend/`. `App.vue` arma el panel con componentes para la navegación, diálogos y siete vistas. `Login.vue` gestiona el formulario público y su estado. El panel monta las vistas antes de inicializar `chat/workspace.js` y `dashboard.js`, que conservan los contratos de la API, el historial, el envío de mensajes y las operaciones de GPU. Si modificás una vista, conservá los IDs que usan esos controladores o actualizá ambas partes juntas.

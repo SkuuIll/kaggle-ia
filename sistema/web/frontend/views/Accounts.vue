@@ -21,7 +21,7 @@
               <th>Cuenta</th>
               <th>Estado</th>
               <th>Modelo</th>
-              <th>Disponible</th>
+              <th>Cuota de GPU</th>
               <th style="text-align: right">Acciones</th>
             </tr>
           </thead>

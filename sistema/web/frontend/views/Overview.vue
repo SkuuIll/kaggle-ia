@@ -69,26 +69,26 @@
       <article class="panel">
         <div class="panel-title">
           <div>
-            <h2>Actividad de tokens</h2>
-            <p>Últimos 7 días · agrupación por día UTC</p>
-          </div>
-          <div class="legend">
-            <span><i></i>Entrada</span><span><i class="out"></i>Salida</span>
-          </div>
-        </div>
-        <div id="usage-chart" class="chart"></div>
-        <p class="hint" id="chart-note"></p>
-      </article>
-      <article class="panel">
-        <div class="panel-title">
-          <div>
-            <h2>Cuota de GPU</h2>
-            <p>Consumo informado por Kaggle</p>
+            <h2>Cuota y renovación</h2>
+            <p>Horas y fecha de renovación por cuenta</p>
           </div>
           <i data-icon="clock"></i>
         </div>
         <div id="quota-list"></div>
-        <p class="hint">Las reservas reducen las horas disponibles. La cuota puede variar.</p>
+        <p class="hint">Las horas reservadas reducen el saldo. Kaggle informa el límite y la renovación de cada cuenta.</p>
+      </article>
+      <article class="panel">
+        <div class="panel-title">
+          <div>
+            <h2>Actividad de tokens</h2>
+            <p>Últimos 7 días · agrupación por día UTC</p>
+          </div>
+          <div class="legend" id="chart-legend" hidden>
+            <span><i></i>Entrada</span><span><i class="out"></i>Salida</span>
+          </div>
+        </div>
+        <div id="usage-chart"></div>
+        <p class="hint" id="chart-note"></p>
       </article>
     </div>
     <details class="panel connection-details" id="operation-mode-card">
