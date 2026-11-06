@@ -153,6 +153,18 @@ async function selectChatConversation(id){
   }catch(e){toast(e.message,true);}
 }
 
+function readyChatAccount(exclude){
+  return latest?.accounts.find(a=>a.key!==exclude&&a.configured&&a.state==='RUNNING'&&a.live?.model_ready===true&&!accountPowerJob(a));
+}
+
+async function useReadyChatAccount(){
+  const current=chatState.conversation?.account||el('chat-account').value;
+  const ready=readyChatAccount(current);
+  if(!ready)return;
+  el('chat-account').value=ready.key;
+  await changeChatAccount(ready.key);
+}
+
 function renderChatHeaderStatus(){
   if(!el('chat-active-title'))return;
   const conv=chatState.conversation;
@@ -160,22 +172,25 @@ function renderChatHeaderStatus(){
   const accKey=conv?.account||el('chat-account')?.value||'rapido';
   const acc=account(accKey);
   const pill=el('chat-gpu-pill');
-  const ready=acc?.state==='RUNNING'&&acc.live?.model_ready===true;
   const operation=accountPowerJob(acc);
+  const ready=acc?.state==='RUNNING'&&acc.live?.model_ready===true&&!operation;
+  const alternative=ready?null:readyChatAccount(accKey);
   const [gpuState,tone]=gpuStatus(acc);
-  let status=!acc?.configured?'Elegí una cuenta para usar el chat.':ready?'':gpuState+'.';
+  let status=!acc?.configured?'Elegí una cuenta para usar el chat.':ready?'':operation?describePower(operation)[1]:'Cuenta '+acc.account+' · '+gpuState+'.';
   if(activeRequestId&&chatRequestConversation!==activeChatId)status='Hay una respuesta en curso en otra conversación.';
   const statusNode=el('chat-connection-status');
   if(statusNode.textContent!==status)statusNode.textContent=status;
   el('chat-connection-notice').hidden=!status;
-  el('chat-view-accounts').hidden=ready;
+  el('chat-view-accounts').hidden=ready||Boolean(operation)||Boolean(alternative);
+  el('chat-view-activity').hidden=!operation;
+  el('chat-use-ready-account').hidden=!alternative||Boolean(activeRequestId);
+  if(alternative)setJobText('chat-use-ready-account','Usar cuenta '+alternative.account+' · Lista');
   pill.className='badge '+tone;
   if(pill.textContent!==gpuState)pill.textContent=gpuState;
   const accountName=acc?'Cuenta '+acc.account+' · '+uiText(acc.label):'Elegí una cuenta';
   setJobText('chat-server-account',accountName);
   el('chat-server-account').title=accountName;
-  const stopping=operation?.status==='running'&&['stop','stop_all'].includes(operation.action);
-  el('chat-send-btn').disabled=!ready||stopping||sendingChatMessage||uploadingChatFiles||Boolean(activeRequestId);
+  el('chat-send-btn').disabled=!ready||sendingChatMessage||uploadingChatFiles||Boolean(activeRequestId);
   el('chat-cancel-btn').hidden=!activeRequestId||chatRequestConversation!==activeChatId;
 }
 

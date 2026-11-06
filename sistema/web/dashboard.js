@@ -149,7 +149,7 @@ function navigate(value){
   document.title=title+' · Kaggle IA';
   if(location.hash!=='#'+value)history.replaceState(null,'','#'+value);
   if(latest){renderJob();renderQuickTpsModels();}
-  if(value==='chat')loadChatConversations();
+  if(value==='chat')return loadChatConversations();
 }
 window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
 function setting(value){document.querySelectorAll('[data-setting]').forEach(n=>n.setAttribute('aria-selected',String(n.dataset.setting===value)));document.querySelectorAll('[data-setting-view]').forEach(n=>n.hidden=n.dataset.settingView!==value);}
@@ -216,6 +216,9 @@ function render(){
   select('ops-account',configured);
   select('template-account',configured);
   select('chat-account',configured);
+  const preferredChat=chatState.conversation?.account||chatPreference('account');
+  if(configured.some(a=>a.key===preferredChat))el('chat-account').value=preferredChat;
+  else if(!chatState.conversation&&readyChatAccount())el('chat-account').value=readyChatAccount().key;
   if(!clientDefaultSet&&configured.length){el('client-account').value=(configured.find(active)||configured[0]).key;clientDefaultSet=true;}
   if(clientConfig&&clientConfig.profile_key!==el('client-account').value)clearClientConfig();
   renderLaunchConsole();
@@ -296,12 +299,11 @@ function renderDashboard(){
   html('quota-list',accounts.length?accounts.map(quotaCard).join(''):'<div class="empty">Agregá una cuenta para consultar su cuota.</div>');
 }
 
-function openChatForAccount(key){
-  if(key&&el('chat-account')){el('chat-account').value=key;chatPreference('account',key);}
-  navigate('chat');
-  if(activeChatId&&chatState.conversation&&chatState.conversation.account!==key){
-    changeChatAccount(key);
-  }
+async function openChatForAccount(key){
+  await navigate('chat');
+  if(page!=='chat'||!account(key)?.configured)return;
+  el('chat-account').value=key;
+  if(chatState.conversation?.account!==key)await changeChatAccount(key);
 }
 function openModelsForAccount(key){
   navigate('modelos');
@@ -356,11 +358,11 @@ function renderAccounts(){
   html('account-rows',accounts.map(a=>{
     const key=esc(a.key),label=esc(name(a));
     return `<article class="model-card account-card">
-      <div class="card-head"><div><h3>${label}</h3><span class="hint">Cuenta ${a.account}</span></div>${badge(a)}</div>
+      <div class="card-head"><div><h3>${label}</h3><span class="hint">Cuenta ${a.account}</span></div><span id="account-status-${key}">${badge(a)}</span></div>
       <p class="model-label">${esc(uiText(a.label))}</p>
       <div class="account-card-quota"><strong>${esc(availableQuota(a))}</strong><div class="quota-reset"><span>Renovación</span>${quotaRenewal(a.quota)}</div></div>
       <div class="account-card-actions">
-        ${gpuControl(a)}
+        <div id="account-power-${key}">${gpuControl(a)}</div>
         <button type="button" onclick="openChatForAccount('${key}')">${icon('chat')} Chat</button>
         <details class="account-more"><summary aria-label="Más acciones para ${label}">Más</summary>
           <div><button type="button" onclick="openModelsForAccount('${key}')">Cambiar modelo</button>
@@ -373,6 +375,10 @@ function renderAccounts(){
       </div>
     </article>`;
   }).join('')||(configured.length?'<p class="empty">No hay cuentas que coincidan con la búsqueda.</p>':''));
+  for(const a of accounts){
+    html('account-status-'+a.key,badge(a));
+    html('account-power-'+a.key,gpuControl(a));
+  }
 }
 function eventRows(events){return events.length?events.map(e=>`<div class="event"><span class="event-icon ${e.status==='error'?'bad':''}">${icon(e.status==='error'?'x':'check')}</span><div class="event-main">${esc(actions[e.action]||'Operación del panel')}<small>${e.profile?'Conexión '+(account(e.profile)?.account||'')+' · ':''}${e.status==='done'?'Completada':'No se completó; revisá el resultado'}${e.detail?' · '+esc(e.detail):''}</small></div><time datetime="${new Date(e.timestamp*1000).toISOString()}">${new Date(e.timestamp*1000).toLocaleString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</time></div>`).join(''):'<div class="empty"><b>Todavía no hay operaciones registradas.</b>Los inicios, apagados y cambios aparecerán acá.</div>';}
 function renderHistory(){if(!latest)return;const filter=el('history-filter').value,events=latest.history||[];html('recent-events',eventRows(events.slice(0,4)));const filtered=events.filter(e=>filter==='all'||e.status===filter);html('operation-history',filtered.length||filter==='all'?eventRows(filtered):'<div class="empty"><b>No hay operaciones con este resultado.</b>Podés cambiar el filtro para ver las demás.</div>');}

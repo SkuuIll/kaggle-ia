@@ -230,6 +230,8 @@
             </div>
             <div id="chat-connection-notice" class="chat-connection-notice" hidden>
               <p id="chat-connection-status" class="hint" role="status"></p>
+              <button id="chat-use-ready-account" type="button" class="quiet" onclick="useReadyChatAccount()" hidden>Usar cuenta lista</button>
+              <button id="chat-view-activity" type="button" class="quiet" onclick="navigate('actividad')" hidden>Ver avance</button>
               <button id="chat-view-accounts" type="button" class="quiet" onclick="navigate('cuentas')" hidden>Ver cuentas</button>
             </div>
             <p id="chat-upload-status" class="hint" role="status" hidden></p>
