@@ -3,18 +3,17 @@
   "profiles": {
     "rapido": {
       "model": "cybertiel-coder",
-      "label": "Qwen 3.8 27B",
-      "context": 131072,
+      "label": "Qwen 3.6 35B-A3B Heretic · APEX I-Compact - 256k (cuenta 1)",
+      "context": 262144,
       "temperature": 0.2,
       "reasoning": true,
-      "effort": "medium",
+      "effort": "none",
       "source": null,
-      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
-      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
-      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "repo": "SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF",
+      "filename": "Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf",
+      "revision": "313e55f61a045dd18ac023d28fe845ee35988a5d",
       "parameters": {
-        "draft_num_predict": 2,
-        "num_batch": 512
+        "draft_num_predict": 2
       },
       "account": 1,
       "port": 18134,
@@ -30,23 +29,23 @@
       "client_port": 19134,
       "output_tokens": 8192,
       "performance_profile": "contexto",
-      "template_id": "qwen38-heretic-rvn",
-      "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M"
+      "template_id": "qwen36-heretic-compact",
+      "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M",
+      "engine": "llama"
     },
     "coder2": {
       "model": "qwen38-coder390",
-      "label": "Qwen 3.8 27B",
-      "context": 131072,
+      "label": "Qwen 3.6 35B-A3B Heretic · APEX I-Compact - 256k (cuenta 2)",
+      "context": 262144,
       "temperature": 0.2,
       "reasoning": true,
-      "effort": "medium",
+      "effort": "none",
       "source": null,
-      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
-      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
-      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "repo": "SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF",
+      "filename": "Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf",
+      "revision": "313e55f61a045dd18ac023d28fe845ee35988a5d",
       "parameters": {
-        "draft_num_predict": 2,
-        "num_batch": 512
+        "draft_num_predict": 2
       },
       "account": 2,
       "port": 17860,
@@ -62,23 +61,23 @@
       "client_port": 19860,
       "output_tokens": 8192,
       "performance_profile": "contexto",
-      "template_id": "qwen38-heretic-rvn",
-      "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M"
+      "template_id": "qwen36-heretic-compact",
+      "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M",
+      "engine": "llama"
     },
     "coder3": {
       "model": "qwen38-coder3",
-      "label": "Qwen 3.8 27B",
-      "context": 131072,
+      "label": "Qwen 3.6 35B-A3B Heretic · APEX I-Compact - 256k (cuenta 3)",
+      "context": 262144,
       "temperature": 0.2,
       "reasoning": true,
-      "effort": "medium",
+      "effort": "none",
       "source": null,
-      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
-      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
-      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "repo": "SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF",
+      "filename": "Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf",
+      "revision": "313e55f61a045dd18ac023d28fe845ee35988a5d",
       "parameters": {
-        "draft_num_predict": 2,
-        "num_batch": 512
+        "draft_num_predict": 2
       },
       "account": 3,
       "port": 17861,
@@ -94,24 +93,24 @@
       "client_port": 19860,
       "output_tokens": 8192,
       "performance_profile": "contexto",
-      "template_id": "qwen38-heretic-rvn",
+      "template_id": "qwen36-heretic-compact",
       "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M",
-      "enabled": false
+      "enabled": false,
+      "engine": "llama"
     },
     "coder4": {
       "model": "qwen38-coder4",
-      "label": "Qwen 3.8 27B",
-      "context": 131072,
+      "label": "Qwen 3.6 35B-A3B Heretic · APEX I-Compact - 256k (cuenta 4)",
+      "context": 262144,
       "temperature": 0.2,
       "reasoning": true,
-      "effort": "medium",
+      "effort": "none",
       "source": null,
-      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
-      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
-      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "repo": "SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF",
+      "filename": "Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf",
+      "revision": "313e55f61a045dd18ac023d28fe845ee35988a5d",
       "parameters": {
-        "draft_num_predict": 2,
-        "num_batch": 512
+        "draft_num_predict": 2
       },
       "account": 4,
       "port": 17862,
@@ -127,24 +126,24 @@
       "client_port": 19860,
       "output_tokens": 8192,
       "performance_profile": "contexto",
-      "template_id": "qwen38-heretic-rvn",
+      "template_id": "qwen36-heretic-compact",
       "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M",
-      "enabled": false
+      "enabled": false,
+      "engine": "llama"
     },
     "coder5": {
       "model": "qwen38-coder5",
-      "label": "Qwen 3.8 27B",
-      "context": 131072,
+      "label": "Qwen 3.6 35B-A3B Heretic · APEX I-Compact - 256k (cuenta 5)",
+      "context": 262144,
       "temperature": 0.2,
       "reasoning": true,
-      "effort": "medium",
+      "effort": "none",
       "source": null,
-      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
-      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
-      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "repo": "SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF",
+      "filename": "Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf",
+      "revision": "313e55f61a045dd18ac023d28fe845ee35988a5d",
       "parameters": {
-        "draft_num_predict": 2,
-        "num_batch": 512
+        "draft_num_predict": 2
       },
       "account": 5,
       "port": 17863,
@@ -160,24 +159,24 @@
       "client_port": 19860,
       "output_tokens": 8192,
       "performance_profile": "contexto",
-      "template_id": "qwen38-heretic-rvn",
+      "template_id": "qwen36-heretic-compact",
       "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M",
-      "enabled": false
+      "enabled": false,
+      "engine": "llama"
     },
     "coder6": {
       "model": "qwen38-coder6",
-      "label": "Qwen 3.8 27B",
-      "context": 131072,
+      "label": "Qwen 3.6 35B-A3B Heretic · APEX I-Compact - 256k (cuenta 6)",
+      "context": 262144,
       "temperature": 0.2,
       "reasoning": true,
-      "effort": "medium",
+      "effort": "none",
       "source": null,
-      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
-      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
-      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "repo": "SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF",
+      "filename": "Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf",
+      "revision": "313e55f61a045dd18ac023d28fe845ee35988a5d",
       "parameters": {
-        "draft_num_predict": 2,
-        "num_batch": 512
+        "draft_num_predict": 2
       },
       "account": 6,
       "port": 17864,
@@ -193,24 +192,24 @@
       "client_port": 19860,
       "output_tokens": 8192,
       "performance_profile": "contexto",
-      "template_id": "qwen38-heretic-rvn",
+      "template_id": "qwen36-heretic-compact",
       "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M",
-      "enabled": false
+      "enabled": false,
+      "engine": "llama"
     },
     "coder7": {
       "model": "qwen38-coder7",
-      "label": "Qwen 3.8 27B",
-      "context": 131072,
+      "label": "Qwen 3.6 35B-A3B Heretic · APEX I-Compact - 256k (cuenta 7)",
+      "context": 262144,
       "temperature": 0.2,
       "reasoning": true,
-      "effort": "medium",
+      "effort": "none",
       "source": null,
-      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
-      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
-      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "repo": "SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF",
+      "filename": "Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf",
+      "revision": "313e55f61a045dd18ac023d28fe845ee35988a5d",
       "parameters": {
-        "draft_num_predict": 2,
-        "num_batch": 512
+        "draft_num_predict": 2
       },
       "account": 7,
       "port": 17865,
@@ -226,24 +225,24 @@
       "client_port": 19860,
       "output_tokens": 8192,
       "performance_profile": "contexto",
-      "template_id": "qwen38-heretic-rvn",
+      "template_id": "qwen36-heretic-compact",
       "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M",
-      "enabled": false
+      "enabled": false,
+      "engine": "llama"
     },
     "coder8": {
       "model": "qwen38-coder8",
-      "label": "Qwen 3.8 27B",
-      "context": 131072,
+      "label": "Qwen 3.6 35B-A3B Heretic · APEX I-Compact - 256k (cuenta 8)",
+      "context": 262144,
       "temperature": 0.2,
       "reasoning": true,
-      "effort": "medium",
+      "effort": "none",
       "source": null,
-      "repo": "0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF",
-      "filename": "RVN-Q4_K_M-multilingual-mtp.gguf",
-      "revision": "ab8d7bd81d03117501e4da60cccdff4c80f0eea0",
+      "repo": "SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF",
+      "filename": "Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf",
+      "revision": "313e55f61a045dd18ac023d28fe845ee35988a5d",
       "parameters": {
-        "draft_num_predict": 2,
-        "num_batch": 512
+        "draft_num_predict": 2
       },
       "account": 8,
       "port": 17866,
@@ -259,9 +258,10 @@
       "client_port": 19860,
       "output_tokens": 8192,
       "performance_profile": "contexto",
-      "template_id": "qwen38-heretic-rvn",
+      "template_id": "qwen36-heretic-compact",
       "vision_model": "huihui_ai/qwen2.5-vl-abliterated:3b-instruct-q4_K_M",
-      "enabled": false
+      "enabled": false,
+      "engine": "llama"
     }
   }
 }
