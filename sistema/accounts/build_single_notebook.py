@@ -10,6 +10,7 @@ relay_config=settings()
 profile_key=sys.argv[1] if len(sys.argv)>1 else 'rapido'
 profile=json.loads((BASE/'model_profiles.json').read_text(encoding='utf8'))['profiles'][profile_key]
 exl3=profile.get('engine')=='exl3'
+llama=profile.get('engine')=='llama'
 cache=None if exl3 else source_for(profile)
 if cache is None:profile.pop('cache_source',None)
 port=profile.get('port',18134)
@@ -45,7 +46,7 @@ if needed:
     subprocess.run(['apt-get','install','-y','-qq',*needed],check=True)
 missing=[name for name in ('huggingface_hub','requests') if importlib.util.find_spec(name) is None]
 if missing:subprocess.run([sys.executable,'-m','pip','install','-q',*missing],check=True)
-'''+('' if exl3 else "subprocess.run('curl -fsSL https://ollama.com/install.sh | sh',shell=True,check=True,env={**os.environ,'OLLAMA_VERSION':'0.40.13'})\n"))
+'''+('' if exl3 or llama else "subprocess.run('curl -fsSL https://ollama.com/install.sh | sh',shell=True,check=True,env={**os.environ,'OLLAMA_VERSION':'0.40.13'})\n"))
 if exl3:
     code(f'config={profile!r}\n'+(BASE/'accounts/exl3_runtime.py').read_text(encoding='utf8')+'''
 runtime_fingerprint.update(engine='exl3', kv_cache_requested='Q4', weights_source='huggingface-download')
@@ -68,7 +69,16 @@ else:
     runtime_fingerprint['weights_source']='huggingface-download'
 print('Pesos descargados.',flush=True)
 ''')
-    code(r'''os.environ.update(OLLAMA_HOST='127.0.0.1:11434',OLLAMA_MODELS='/kaggle/temp/ollama_models',OLLAMA_NUM_PARALLEL='1',OLLAMA_FLASH_ATTENTION='1',OLLAMA_KV_CACHE_TYPE='q8_0',CUDA_VISIBLE_DEVICES='0,1')
+    if llama:
+        code((BASE/'accounts/llama_runtime.py').read_text(encoding='utf8')+'''
+runtime_fingerprint.update(engine='llama', engine_version='b12170')
+report_phase('register')
+ollama_log=open('/tmp/llama.log','w')
+proc_ollama=start_llama(config,model_path,ollama_log)
+engine_ready=False
+''')
+    else:
+        code(r'''os.environ.update(OLLAMA_HOST='127.0.0.1:11434',OLLAMA_MODELS='/kaggle/temp/ollama_models',OLLAMA_NUM_PARALLEL='1',OLLAMA_FLASH_ATTENTION='1',OLLAMA_KV_CACHE_TYPE='q8_0',CUDA_VISIBLE_DEVICES='0,1')
 os.makedirs(os.environ['OLLAMA_MODELS'],exist_ok=True)
 ollama_log=open('/tmp/ollama.log','w')
 proc_ollama=subprocess.Popen(['ollama','serve'],stdout=ollama_log,stderr=ollama_log)
@@ -96,16 +106,17 @@ if proc_ssh.poll() is not None:raise RuntimeError('No se pudo iniciar el relay S
 print('RELAY_READY',flush=True)
 print('Cargando modelo en las T4...',flush=True)
 report_phase('warm')
-if config.get('engine')=='exl3':
+if config.get('engine') in ('exl3','llama'):
     for _ in range(240):
         if proc_ollama.poll() is not None:
-            raise RuntimeError(Path('/tmp/exl3.log').read_text(errors='replace')[-6000:])
+            raise RuntimeError(Path(ollama_log.name).read_text(errors='replace')[-6000:])
         try:
             if requests.get('http://127.0.0.1:11434/v1/models',timeout=2).ok:break
         except requests.RequestException:pass
         time.sleep(2)
-    else:raise RuntimeError('TabbyAPI no inicio')
-    r=requests.post('http://127.0.0.1:11434/v1/chat/completions',json={'model':config['model'],'messages':[{'role':'user','content':'Responde LISTO'}],'enable_thinking':False,'max_tokens':64},timeout=600)
+    else:raise RuntimeError('El servidor de inferencia no inició')
+    direct={'chat_template_kwargs':{'enable_thinking':False}} if config.get('engine')=='llama' else {'enable_thinking':False}
+    r=requests.post('http://127.0.0.1:11434/v1/chat/completions',json={'model':config['model'],'messages':[{'role':'user','content':'Responde LISTO'}],'max_tokens':64,**direct},timeout=600)
     r.raise_for_status()
     visible=r.json()['choices'][0]['message'].get('content')
 else:

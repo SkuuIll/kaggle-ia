@@ -1,3 +1,14 @@
+function applyTheme(dark){
+  document.documentElement.dataset.theme=dark?'dark':'light';
+  document.getElementById('theme-toggle')?.setAttribute('aria-pressed',String(dark));
+}
+function toggleTheme(){
+  const dark=document.documentElement.dataset.theme!=='dark';
+  applyTheme(dark);
+  localStorage.setItem('panel-theme',dark?'dark':'light');
+}
+applyTheme((localStorage.getItem('panel-theme')||'light')==='dark');
+
 function setChatSidebar(open,restoreFocus=false){
   const sidebar=el('chat-sidebar'),toggle=el('chat-sidebar-toggle');
   sidebar.classList.toggle('open',open);
@@ -242,7 +253,7 @@ function renderQuickTpsModels(){
   const fmtCtx=n=>n>=1000000?'1M':Math.round(n/1024)+'k';
   html('quick-tps-models',fastModels.map(t=>{
     const isCurrent=a&&(a.template_id===t.id||a.filename===t.filename);
-    return `<div class="tps-card ${isCurrent?'current':''}"><div class="tps-card-top"><b>${esc(uiText(t.name))}</b><span class="chip tps">${icon('activity')} ${esc('Sin medición GPU')}</span></div><div class="tps-card-meta">${esc(t.arch||'MoE / GGUF')} · ${(t.size_bytes/1e9).toFixed(1)} GB · ${fmtCtx(t.context)} activo (${fmtCtx(t.native_context||t.context)} nativo)</div><div class="tps-card-meta">${esc(t.vram_fit||'Tesla T4 ×2')}</div><div class="buttons"><button type="button" class="${isCurrent?'':'primary'} operation" ${busy()||isCurrent?'disabled':''} onclick="installTemplateForAccount('${esc(key)}','${esc(t.id)}')">${isCurrent?'Configurado en esta cuenta':'Cambiar a este modelo'}</button></div></div>`;
+    return `<div class="tps-card ${isCurrent?'current':''}"><div class="tps-card-top"><b>${esc(uiText(t.name))}</b><span class="chip tps">${icon('activity')} ${esc(t.id==='thinkingcap-nemotron'?'78,9 TPS código':t.id==='qwen38-heretic-exl3'?'49,2 TPS código':'Sin medición comparable')}</span></div><div class="tps-card-meta">${esc(t.arch||'MoE / GGUF')} · ${(t.size_bytes/1e9).toFixed(1)} GB · ${fmtCtx(t.context)} activo (${fmtCtx(t.native_context||t.context)} nativo)</div><div class="tps-card-meta">${esc(t.vram_fit||'Tesla T4 ×2')}</div><div class="buttons"><button type="button" class="${isCurrent?'':'primary'} operation" ${busy()||isCurrent?'disabled':''} onclick="installTemplateForAccount('${esc(key)}','${esc(t.id)}')">${isCurrent?'Configurado en esta cuenta':'Cambiar a este modelo'}</button></div></div>`;
   }).join(''));
 }
 
@@ -345,7 +356,7 @@ function renderTemplates(){
   const fmtCtx=n=>n>=1000000?'1M':Math.round(n/1024)+'k';
   cards.push(...modelList.map(t=>{
     const isInstalled=curAcc&&(curAcc.template_id===t.id||curAcc.filename===t.filename);
-    return `<article class="recipe"><div class="recipe-top"><span class="recipe-category">${esc(t.category)}${isInstalled?' · ACTIVA EN ESTA CUENTA':''}</span><span class="chip tps">${icon('activity')} ${esc('Sin medición GPU')}</span></div><h3>${esc(uiText(t.name))}</h3><p>${esc(uiText(t.description))}</p><dl class="recipe-facts"><div><dt>Velocidad T4</dt><dd>${esc('Sin medición GPU')}</dd></div><div><dt>Pesos GGUF</dt><dd>${(t.size_bytes/1e9).toFixed(2)} GB</dd></div><div><dt>Contexto (act/nat)</dt><dd>${fmtCtx(t.context)} / ${fmtCtx(t.native_context||t.context)}</dd></div></dl><p class="hint"><strong>Arquitectura:</strong> ${esc(t.arch||'GGUF')} · ${esc(t.vram_fit||'2× Tesla T4')}</p><p class="hint">Revisión ${esc(t.revision.slice(0,10))} · ${esc(t.filename.match(/Q\d_[A-Z0-9_]+|Q\d_K/i)?.[0]||'GGUF')} · ${esc(t.license)}</p><div class="buttons"><button class="${isInstalled?'':'primary'}" ${busy()?'disabled':''} onclick="installTemplate('${t.id}')">${isInstalled?'Reinstalar plantilla':'Instalar plantilla'}</button><a href="https://huggingface.co/${esc(t.repo)}/tree/${esc(t.revision)}" target="_blank" rel="noreferrer">Ver en HF ${icon('external')}</a></div></article>`;
+    return `<article class="recipe"><div class="recipe-top"><span class="recipe-category">${esc(t.category)}${isInstalled?' · ACTIVA EN ESTA CUENTA':''}</span><span class="chip tps">${icon('activity')} ${esc(t.id==='thinkingcap-nemotron'?'78,9 TPS código':t.id==='qwen38-heretic-exl3'?'49,2 TPS código':'Sin medición comparable')}</span></div><h3>${esc(uiText(t.name))}</h3><p>${esc(uiText(t.description))}</p><dl class="recipe-facts"><div><dt>Velocidad T4</dt><dd>${esc(t.id==='thinkingcap-nemotron'?'78,9 TPS código':t.id==='qwen38-heretic-exl3'?'49,2 TPS código':'Sin medición comparable')}</dd></div><div><dt>Pesos</dt><dd>${((t.download_bytes||t.size_bytes)/1e9).toFixed(2)} GB</dd></div><div><dt>Contexto (act/nat)</dt><dd>${fmtCtx(t.context)} / ${fmtCtx(t.native_context||t.context)}</dd></div></dl><p class="hint"><strong>Arquitectura:</strong> ${esc(t.arch||'GGUF')} · ${esc(t.vram_fit||'2× Tesla T4')}</p><p class="hint">Revisión ${esc(t.revision.slice(0,10))} · ${esc(t.filename.match(/Q\d_[A-Z0-9_]+|Q\d_K/i)?.[0]||'GGUF')} · ${esc(t.license)}</p><div class="buttons"><button class="${isInstalled?'':'primary'}" ${busy()?'disabled':''} onclick="installTemplate('${t.id}')">${isInstalled?'Reinstalar plantilla':'Instalar plantilla'}</button><a href="https://huggingface.co/${esc(t.repo)}/tree/${esc(t.revision)}" target="_blank" rel="noreferrer">Ver en HF ${icon('external')}</a></div></article>`;
   }));
  }
  if(filter==='all'||filter==='tools')cards.push(...templateCatalog.tools.filter(matches).map(t=>`<article class="recipe"><span class="recipe-category">Herramienta local</span><h3>${esc(uiText(t.name))}</h3><p>${esc(uiText(t.description))}</p><p class="hint">${esc(t.packages.join(' · '))}</p><p class="hint">Instalación en entorno aislado. Requiere Python 3.12. Sin inicio automático de GPU.</p><div class="buttons"><button onclick="prepareTool('${t.id}')">Preparar instalador privado</button><a href="${esc(t.source)}" target="_blank" rel="noreferrer">GitHub ${icon('external')}</a></div></article>`));

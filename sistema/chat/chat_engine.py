@@ -506,7 +506,7 @@ class ChatStore:
                                 if type(tokens) is int and tokens>0:
                                     elapsed=time.perf_counter()-inference_started
                                     if elapsed>0:
-                                        rate=usage_obj.get('completion_tokens_per_sec')
+                                        rate=usage_obj.get('completion_tokens_per_sec') or (chunk.get('timings') or {}).get('predicted_per_second')
                                         native=type(rate) in (int,float) and 0<rate<float('inf')
                                         state.update(tokens=tokens,tps=round(rate if native else tokens/elapsed,1),
                                                      elapsed=round(elapsed,3),measurement_kind='generation' if native else 'request')

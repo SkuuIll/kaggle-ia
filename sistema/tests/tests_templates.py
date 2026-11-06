@@ -50,8 +50,17 @@ class TemplateTests(unittest.TestCase):
  def test_unknown_template_never_becomes_a_shell_command(self):
   with self.assertRaises(ValueError):get_template('https://example.test/install.sh')
  def test_budget_fits_reported_native_context(self):
-  self.assertEqual(len(MODELS),1)
+  self.assertEqual({t['id'] for t in MODELS},{'thinkingcap-nemotron','qwen38-heretic-exl3','qwen38-heretic-rvn'})
   for t in MODELS:self.assertLessEqual(t['context'],t['native_context']);self.assertLess(t['size_bytes'],24*1024**3)
+
+ def test_switching_templates_clears_previous_engine_and_cache(self):
+  profile={'account':2,'engine':'exl3','cache_source':{'old':True}}
+  target=get_template('thinkingcap-nemotron')
+  candidate=prepare_profile(profile,target['id'],self.metadata(target))
+  self.assertEqual((candidate['engine'],candidate['context'],candidate['effort']),('llama',262144,'none'))
+  self.assertNotIn('cache_source',candidate)
+  old=get_template('qwen38-heretic-rvn')
+  self.assertNotIn('engine',prepare_profile(candidate,old['id'],self.metadata(old)))
  def test_private_tool_package_does_not_put_key_in_scripts(self):
   with tempfile.TemporaryDirectory() as folder:
    path=Path(folder)/'tool.zip';build_tool_package('httpx',{'model':'alias','context':32768},{'url':'https://ia.example.test/v1','token':'private-test-key'},path)
@@ -82,4 +91,4 @@ class TemplateTests(unittest.TestCase):
  def test_all_curated_models_are_low_restriction_variants(self):
   for model in MODELS:
    self.assertTrue(model['low_restriction'])
-   self.assertTrue('abliterated' in model['repo'].lower() or model['id']=='cybertiel')
+   self.assertRegex(model['repo'].lower(),r'abliterated|heretic')

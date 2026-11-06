@@ -2,6 +2,17 @@
 import copy,re
 
 MODELS=[
+ {'id':'thinkingcap-nemotron','name':'ThinkingCap Nemotron 3.5 Lightning · Abliterated','category':'MoE · llama.cpp',
+  'repo':'mradermacher/ThinkingCap-Nemotron-3.5-Lightning-30B-A3B-abliterated-i1-GGUF',
+  'filename':'ThinkingCap-Nemotron-3.5-Lightning-30B-A3B-abliterated.i1-IQ4_XS.gguf',
+  'revision':'0085d5241dc5f1d4ed83bcd4938c03c262ccd6af','size_bytes':18718009024,'context':262144,'native_context':1048576,
+  'license':'OpenMDW 1.1','engine':'llama','parameters':{},'tested':True,'effort':'none','arch':'30B MoE · 3B activos',
+  'description':'Ventana de 262.144 en dos T4. Recuperó cinco datos con 249.998 tokens de entrada. Medición corta: 78,9 TPS en código y 85,1 en prosa.'},
+ {'id':'qwen38-heretic-exl3','name':'Qwen3.8 27B Heretic ARA · EXL3 + DFlash2','category':'EXL3 · TabbyAPI',
+  'repo':'Honkware/Qwen3.8-27B-heretic-ara-exl3-4.0bpw','filename':'model-00001-of-00003.safetensors',
+  'revision':'1d09f16a35dc3c23b9634741bf61e6c746fcce21','size_bytes':8471336006,'download_bytes':17178659341,
+  'context':131072,'native_context':262144,'license':'Apache-2.0','engine':'exl3','parameters':{},'tested':True,
+  'arch':'27B DeltaNet + DFlash2','description':'Perfil anterior de producción. Mediana de 49,2 TPS en código corto en dos T4.'},
  {'id':'qwen38-heretic-rvn','name':'Qwen3.8 27B RVN Heretic · Multilingual MTP','category':'Modelo Único · 27B DeltaNet + MTP (128k)','repo':'0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF','filename':'RVN-Q4_K_M-multilingual-mtp.gguf','revision':'ab8d7bd81d03117501e4da60cccdff4c80f0eea0','size_bytes':16998720992,'context':131072,'native_context':262144,'license':'Apache-2.0','parameters':{'draft_num_predict':2,'num_batch':512},'tested':True,
   'arch':'27B Híbrido DeltaNet + MTP (draft=2)','tps_range':'26–36 TPS','vram_fit':'17.0 GB pesos · 15.0 GB libres (KV -75%)','speed_badge':'Único activo · ARA KL 0.0085 + MTP','tps_tier':'ultra',
   'description':'Refinado con 3 pasadas ARA (0-1% rechazos, preservación KL 0.0085), calibración multilingüe/código v5, cabezal MTP optimizado (draft_num_predict=2, +59% TPS en Q4_K_M), reasoning_effort=medium y 48 capas Gated DeltaNet (-75% caché KV en 128k).'},
@@ -39,8 +50,11 @@ def prepare_profile(profile,identifier,metadata):
     native=metadata.get('gguf',{}).get('context_length')
     if native and t['context']>native:raise ValueError('El contexto supera el informado por el modelo.')
     result=copy.deepcopy(profile)
+    result.pop('cache_source',None)
+    result.pop('engine',None)
+    if 'engine' in t:result['engine']=t['engine']
     result.update(repo=t['repo'],filename=t['filename'],revision=t['revision'],context=t['context'],parameters=t['parameters'],source=None,
-                  label=t['name']+f" - {t['context']//1024}k (cuenta {profile['account']})",temperature=0.2,reasoning=True,effort='medium',output_tokens=8192 if t['context']==131072 else 4096,
-                  performance_profile='contexto' if t['context']==131072 else 'codigo' if t['context']==32768 else 'rapido',template_id=t['id'])
+                  label=t['name']+f" - {t['context']//1024}k (cuenta {profile['account']})",temperature=0.2,reasoning=True,effort=t.get('effort','medium'),output_tokens=8192 if t['context']>=131072 else 4096,
+                  performance_profile='contexto' if t['context']>=131072 else 'codigo' if t['context']==32768 else 'rapido',template_id=t['id'])
     if result['performance_profile']=='rapido':result['output_tokens']=1024
     return result

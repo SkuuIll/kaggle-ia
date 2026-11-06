@@ -36,6 +36,25 @@
 }
 
 body { background:var(--bg);color:var(--text); }
+:root[data-theme="dark"] {
+  color-scheme:dark;
+  --bg:#181a1d;
+  --surface:#202328;
+  --surface-2:#292d33;
+  --surface-3:#343941;
+  --text:#f0f1f3;
+  --text-soft:#d7dce2;
+  --muted:#b2bac5;
+  --line:#434b55;
+  --line-strong:#687483;
+  --console-accent:#ffc0a9;
+  --console-focus:#ffae91;
+  --accent:#a83e27;
+  --accent-hover:#85311f;
+  --good:#9ad6ad;
+  --warn:#f0c583;
+  --bad:#ffb6aa;
+}
 :where(button,input,select,textarea) { font:inherit;font-size:14px; }
 :where(a) { color:var(--console-accent);text-decoration:none; }
 :where(a:hover) { text-decoration:underline; }

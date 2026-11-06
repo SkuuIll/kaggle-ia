@@ -24,8 +24,8 @@ class Gateway(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
     def do_GET(self):
-        exl3=globals().get('config',{}).get('engine')=='exl3'
-        if exl3 and self.path=='/api/ps':
+        openai_engine=globals().get('config',{}).get('engine') in ('exl3','llama')
+        if openai_engine and self.path=='/api/ps':
             ready=globals().get('engine_ready',False)
             return self.send_object(200,{'models':[{'name':config['model'],'context_length':config['context']}] if ready else []})
         if self.path == '/control/status':
@@ -33,7 +33,7 @@ class Gateway(BaseHTTPRequestHandler):
             from pathlib import Path
             with lock:
                 data={'uptime_seconds':int(time.monotonic()-started_at),'idle_seconds':int(time.monotonic()-last_activity),'active_requests':active_requests}
-            data.update(capabilities=['session-v1'] if exl3 else ['session-v1','vision-v1'],**runtime_limits(session_started,last_activity,active_requests,time.monotonic(),idle_policy,maximum_policy+session_extension))
+            data.update(capabilities=['session-v1'] if openai_engine else ['session-v1','vision-v1'],**runtime_limits(session_started,last_activity,active_requests,time.monotonic(),idle_policy,maximum_policy+session_extension))
             data['runtime']=globals().get('runtime_fingerprint',{})
             data['disk']={p:dict(zip(('total','used','free'),shutil.disk_usage(p))) for p in ('/','/kaggle/temp','/kaggle/working') if Path(p).exists()}
             self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers()
@@ -42,8 +42,8 @@ class Gateway(BaseHTTPRequestHandler):
     def do_DELETE(self): self.proxy()
     def do_POST(self):
         if self.path == '/control/vision':
-            if globals().get('config',{}).get('engine')=='exl3':
-                return self.send_object(400,{'error':'El perfil EXL3 admite texto. Usá un perfil Ollama para análisis visual.'})
+            if globals().get('config',{}).get('engine') in ('exl3','llama'):
+                return self.send_object(400,{'error':'Este perfil admite texto. Usá un perfil Ollama para análisis visual.'})
             global last_activity,active_requests
             try:
                 length=int(self.headers.get('Content-Length','0'))
@@ -71,8 +71,8 @@ class Gateway(BaseHTTPRequestHandler):
         global last_activity, active_requests
         if not self.path.startswith(('/v1/', '/api/')):
             self.send_error(404); return
-        exl3=globals().get('config',{}).get('engine')=='exl3'
-        if exl3 and not globals().get('engine_ready',False):
+        engine=globals().get('config',{}).get('engine')
+        if engine in ('exl3','llama') and not globals().get('engine_ready',False):
             return self.send_object(503,{'error':'El motor está cargando.'})
         activity=self.command=='POST' and self.path.split('?')[0] in {'/api/chat','/api/generate','/api/embed','/api/embeddings','/v1/chat/completions','/v1/completions','/v1/embeddings','/v1/responses'}
         if activity:
@@ -85,7 +85,18 @@ class Gateway(BaseHTTPRequestHandler):
                 try:
                     payload = json.loads(body)
                     eff = payload.get('reasoning_effort')
-                    if exl3 and eff=='none':
+                    if engine=='llama' and eff in ('none','low','medium','high','xhigh'):
+                        payload.pop('reasoning_effort')
+                        template=payload.get('chat_template_kwargs') or {}
+                        payload['chat_template_kwargs']={**template,'enable_thinking':eff!='none'}
+                        if eff!='none':
+                            budget={'low':384,'medium':1024,'high':3072,'xhigh':3072}[eff]
+                            maximum=payload.get('max_tokens')
+                            if type(maximum) is int and maximum>0:
+                                budget=min(budget,max(0,maximum-128))
+                            payload['reasoning_budget_tokens']=budget
+                        body=json.dumps(payload).encode('utf-8')
+                    elif engine=='exl3' and eff=='none':
                         payload.pop('reasoning_effort')
                         payload['enable_thinking']=False
                         body=json.dumps(payload).encode('utf-8')
