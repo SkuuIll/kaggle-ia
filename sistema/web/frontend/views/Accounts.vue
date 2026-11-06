@@ -9,6 +9,9 @@
         <button type="button" class="primary operation" onclick="openAccount()">
           <i data-icon="plus"></i> Agregar cuenta
         </button>
+        <button type="button" id="stop-all-accounts" class="quiet operation" data-stop="true" onclick="stopAll()">
+          <i data-icon="stop"></i> Apagar todas
+        </button>
         <label class="sr-only" for="account-search">Buscar cuenta</label
         ><input
           id="account-search"
@@ -17,20 +20,7 @@
           oninput="renderAccounts()"
         />
       </div>
-      <div class="table-wrap" tabindex="0" role="region" aria-label="Cuentas conectadas">
-        <table class="accounts-table" role="table">
-          <thead role="rowgroup">
-            <tr role="row">
-              <th role="columnheader">Cuenta</th>
-              <th role="columnheader">Estado</th>
-              <th role="columnheader">Cuota de GPU</th>
-              <th role="columnheader">Modelo</th>
-              <th role="columnheader" style="text-align: right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="account-rows" role="rowgroup"></tbody>
-        </table>
-      </div>
+      <div id="account-rows" class="account-grid"></div>
       <div id="accounts-empty" class="empty" hidden>
         <b>Tu espacio está listo para una cuenta.</b>Agregá un kaggle.json o un token KGAT_. Guardarlo no
         inicia una GPU.<br /><button
@@ -49,7 +39,7 @@
     <article class="panel">
       <h2>Conectar una cuenta</h2>
       <p class="small muted">
-        1. Agregá la API · 2. Elegí el modelo · 3. Encendé la GPU desde Inicio y esperá la confirmación.<br />Al terminar, usá
+        1. Agregá la API · 2. Elegí el modelo · 3. Encendé la GPU en esta pantalla y esperá la confirmación.<br />Al terminar, usá
         Apagar y verificá el resultado en Actividad.
       </p>
       <a class="small" href="https://www.kaggle.com/settings" target="_blank" rel="noreferrer"

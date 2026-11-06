@@ -16,18 +16,18 @@ El panel de control (`https://ia.example.com`) centraliza la administración de 
 | **Modelos** | Selección manual de cualquier repositorio GGUF compatible en Hugging Face, inspección de archivos disponibles, fijación de revisión SHA y ajuste de ventana de contexto. |
 | **Plantillas** | Catálogo curado con 6 modelos GGUF de baja restricción listos para instalar, 3 paquetes descargables de herramientas para PC (Aider, HTTPX, Streamlit) y 5 plantillas de prompts. |
 | **Actividad** | Consola de progreso en vivo de la operación actual, etapas de arranque informadas por el notebook y registro histórico persistente filtrable por resultado (`Completadas` / `Con errores`). |
-| **Configuración** | Cinco subsecciones: **General** (avisos del navegador y modo del servidor), **Autoapagado** (límites de inactividad y sesión), **Conexión** (diagnóstico, perfiles `16k`/`32k`/`128k`, extensión `+30 min` y configuraciones HTTPS para clientes), **Respaldos** (exportación pública y respaldo privado) y **Seguridad** (cambio de contraseña y cierre de sesión). |
+| **Configuración** | Seis subsecciones. **General** (avisos del navegador y modo del servidor), **Autoapagado** (límites de inactividad y sesión), **Diagnóstico y rendimiento** (perfiles y extensión de sesión), **Clientes IDE** (configuración HTTPS para Paseo, OpenCode y Continue), **Respaldos** (exportación pública y respaldo privado) y **Seguridad** (cambio de contraseña y cierre de sesión). |
 
 ---
 
 ## Flujo de operación diaria
 
 1. **Ingresar al panel:** abrí `https://ia.example.com` e iniciá sesión con tu usuario y contraseña del panel. La sesión dura hasta 8 horas.
-2. **Encender un modelo:** en **Dashboard** o **Cuentas**, pulsá **Encender** sobre la cuenta que quieras utilizar.
+2. **Encender un modelo:** en **Cuentas**, pulsá **Encender** sobre la cuenta que quieras utilizar.
    - Si la otra cuenta estaba encendida, el panel te pedirá confirmación para detenerla primero (solo se permite una sesión GPU activa a la vez para cuidar tus horas).
    - Seguí el avance en **Actividad** hasta que aparezca **LISTO**. Recordá que `RUNNING` en Kaggle solo indica que la máquina virtual arrancó; el modelo está disponible para responder recién cuando alcanza **LISTO**.
 3. **Trabajar desde tus clientes:** abrí una conversación nueva en **Continue** (Antigravity IDE), **Paseo**, **OpenCode** o **Aider**. Todas las peticiones viajan por HTTPS al endpoint `/inference/cuentaN/v1` correspondiente.
-4. **Extender sesión si necesitás más tiempo:** si te acercás al límite de sesión o de inactividad, podés pulsar **Seguir trabajando · +30 min** en **Configuración → Conexión**.
+4. **Extender sesión si necesitás más tiempo:** si te acercás al límite de sesión o de inactividad, podés pulsar **Seguir trabajando · +30 min** en **Configuración → Diagnóstico y rendimiento**.
 5. **Apagar al terminar:** pulsá **Apagar** en la tarjeta del modelo o **Apagar todas** en la esquina superior derecha y esperá a que el panel confirme la finalización en Kaggle.
 
 ---

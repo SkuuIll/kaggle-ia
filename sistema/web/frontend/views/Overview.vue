@@ -6,7 +6,7 @@
         <h1 id="launch-title">Resumen de inferencia</h1>
         <p>Administrá las sesiones de Kaggle y revisá el consumo de tus modelos.</p>
         <button type="button" class="launch-chat" onclick="navigate('chat')">
-          <i data-icon="chat"></i>Abrir chat<i data-icon="arrow"></i>
+          <i data-icon="chat"></i>Continuar chat<i data-icon="arrow"></i>
         </button>
       </div>
       <div id="workflow-stepper" class="launch-status" aria-label="Estado y control del servidor">
@@ -15,21 +15,6 @@
         <p>Buscando el último estado disponible.</p>
       </div>
     </article>
-    <div class="section-heading dashboard-section">
-      <div>
-        <h2>Servidores</h2>
-        <p class="hint">Elegí una cuenta para iniciar, diagnosticar o conectar tus clientes.</p>
-      </div>
-      <div class="buttons">
-        <button type="button" class="quiet" onclick="navigate('cuentas')">
-          Administrar cuentas <i data-icon="arrow"></i>
-        </button>
-        <button type="button" class="danger operation" data-stop="true" onclick="stopAll()">
-          <i data-icon="stop"></i> Apagar todas
-        </button>
-      </div>
-    </div>
-    <div id="model-cards" class="cards"></div>
     <div class="section-heading dashboard-section">
       <div>
         <h2>Uso y cuota</h2>

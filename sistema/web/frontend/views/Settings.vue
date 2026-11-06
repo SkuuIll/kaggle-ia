@@ -8,7 +8,8 @@ import PanelUsers from '../components/PanelUsers.vue';
       <button data-setting="general" aria-selected="true" onclick="setting('general')">General</button
       ><button data-setting="timers" aria-selected="false" onclick="setting('timers')">Autoapagado</button
       ><button data-setting="connection" aria-selected="false" onclick="setting('connection')">
-        Conexión</button
+        Diagnóstico y rendimiento</button
+      ><button data-setting="clients" aria-selected="false" onclick="setting('clients')">Clientes IDE</button
       ><button data-setting="backups" aria-selected="false" onclick="setting('backups')">Respaldos</button
       ><button data-setting="security" aria-selected="false" onclick="setting('security')">Seguridad</button>
     </nav>
@@ -89,9 +90,8 @@ import PanelUsers from '../components/PanelUsers.vue';
           ><select id="ops-account" onchange="renderOperationControls()"></select>
         </div>
         <div class="buttons">
-          <button onclick="diagnoseAccount()">Diagnosticar conexión</button
-          ><button class="primary operation" onclick="prepareWork()">Preparar para trabajar</button
-          ><button id="extend-work" class="operation" onclick="extendWork()">
+          <button onclick="diagnoseAccount()">Diagnosticar conexión</button>
+          <button id="extend-work" class="operation" onclick="extendWork()">
             Seguir trabajando · +30 min
           </button>
         </div>
@@ -132,18 +132,21 @@ import PanelUsers from '../components/PanelUsers.vue';
             próximo notebook informará GPU, controlador, Python, motor y origen de los pesos.
           </p>
         </details>
-        <h2>Conectar Paseo, OpenCode y Continue</h2>
+        <div class="notice">
+          Cerrar el IDE o la conexión SSH no detiene la GPU. Usá los controles de apagado del panel.
+        </div>
+        <button id="open-paseo" hidden class="operation" onclick="act('paseo')">
+          Abrir Paseo en esta PC
+        </button>
+      </article>
+      <article class="panel" data-setting-view="clients" hidden>
+        <h2>Conectar tus clientes IDE</h2>
         <p class="small muted">
           Los clientes usan las direcciones HTTPS y la clave API de su cuenta. Podés preparar sus
           configuraciones completas en este apartado.
         </p>
         <div id="connection-list"></div>
         <hr />
-        <h2>Tu configuración, lista para usar</h2>
-        <p class="small muted">
-          Elegí la cuenta y prepará sus ejemplos. La clave de la API es distinta de tu contraseña del panel y
-          del token de Kaggle.
-        </p>
         <div class="field">
           <label for="client-account">Cuenta para los ejemplos</label
           ><select id="client-account" onchange="clearClientConfig()"></select>
@@ -162,18 +165,20 @@ import PanelUsers from '../components/PanelUsers.vue';
             <div class="buttons" style="margin-top: 10px">
               <button id="client-show-key" onclick="toggleClientKey()">Mostrar clave</button
               ><button onclick="copyClientKey()">Copiar clave</button
-              ><button onclick="probeClientAPI()">Probar API</button>
+              >
             </div>
           </div>
-          <p id="client-probe-result" class="hint" role="status"></p>
-          <div class="field">
-            <label for="snippet-client">Cliente</label
-            ><select id="snippet-client" onchange="renderClientSnippet()">
-              <option value="opencode">OpenCode · opencode.json</option>
-              <option value="paseo">Paseo · config.json</option>
-              <option value="continue">Continue · config.yaml</option>
-            </select>
+          <fieldset class="client-picker">
+            <legend>Elegí el cliente</legend>
+            <label><input type="radio" name="ide-client" value="paseo" checked onchange="renderClientSnippet()" /><strong>Paseo</strong><span>config.json</span></label>
+            <label><input type="radio" name="ide-client" value="opencode" onchange="renderClientSnippet()" /><strong>OpenCode</strong><span>opencode.json</span></label>
+            <label><input type="radio" name="ide-client" value="continue" onchange="renderClientSnippet()" /><strong>Continue</strong><span>config.yaml</span></label>
+          </fieldset>
+          <div class="buttons client-actions">
+            <button type="button" class="primary" onclick="copyClientConfig()">Copiar configuración</button>
+            <button type="button" onclick="probeClientAPI()">Probar conexión</button>
           </div>
+          <p id="client-probe-result" class="hint" role="status"></p>
           <pre
             id="client-snippet"
             class="log"
@@ -181,7 +186,6 @@ import PanelUsers from '../components/PanelUsers.vue';
             aria-label="Ejemplo de configuración"
           ></pre>
           <p id="client-snippet-help" class="hint"></p>
-          <button onclick="copyClientConfig()">Copiar configuración</button>
           <hr />
           <h2>Configuración automática en Windows</h2>
           <p class="small muted">
@@ -210,12 +214,6 @@ import PanelUsers from '../components/PanelUsers.vue';
             modelo usa el dominio HTTPS del panel.
           </p>
         </div>
-        <div class="notice">
-          Cerrar el IDE o la conexión SSH no detiene la GPU. Usá los controles de apagado del panel.
-        </div>
-        <button id="open-paseo" hidden class="operation" onclick="act('paseo')">
-          Abrir Paseo en esta PC
-        </button>
       </article>
       <article class="panel" data-setting-view="backups" hidden>
         <h2>Respaldos y traslado</h2>

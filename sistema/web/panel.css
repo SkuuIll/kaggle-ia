@@ -1923,8 +1923,7 @@ body[data-current-page="chat"] [data-hide-on="chat"]{display:none!important}
 
 /* Chat workspace: conversation, connection and composer are distinct regions. */
 body[data-current-page="chat"] main{padding:18px 24px}
-body[data-current-page="chat"] main>.page-head,
-body[data-current-page="chat"] main>#banner,
+body[data-current-page="chat"] main > :is(.page-head, #banner, #operation-notice) { display: none; }
 .chat-workspace{
   --chat-canvas:#101419;
   --chat-surface:#171d24;

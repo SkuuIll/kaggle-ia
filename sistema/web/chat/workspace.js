@@ -88,7 +88,7 @@ function renderChatList(){
     return `<div role="listitem" class="chat-conv-item ${current?'active':''}">
       <button type="button" class="chat-conv-open" ${current?'aria-current="true"':''} onclick="selectChatConversation('${esc(c.id)}')">
         ${icon('chat')}<span class="chat-conv-meta"><span class="chat-conv-title" title="${esc(c.title)}">${esc(c.title)}</span>
-        ${c.preview&&!/^\s*<think>/i.test(c.preview)?`<span class="chat-conv-preview">${esc(c.preview)}</span>`:''}<span class="chat-conv-sub"><span>${esc(accLabel)}</span><span>${esc(dateLabel)}</span></span></span>
+        <span class="chat-conv-sub">${esc(accLabel)} · ${esc(dateLabel)}</span></span>
       </button>
       <details class="chat-history-menu">
         <summary aria-label="Opciones de ${esc(c.title)}">⋯</summary>
@@ -162,19 +162,19 @@ function renderChatHeaderStatus(){
   const pill=el('chat-gpu-pill');
   const ready=acc?.state==='RUNNING'&&acc.live?.model_ready===true;
   const operation=accountPowerJob(acc);
-  let status=acc?.configured?'':'Elegí una cuenta para usar el chat.';
+  const [gpuState,tone]=gpuStatus(acc);
+  let status=!acc?.configured?'Elegí una cuenta para usar el chat.':ready?'':gpuState+'.';
   if(activeRequestId&&chatRequestConversation!==activeChatId)status='Hay una respuesta en curso en otra conversación.';
   const statusNode=el('chat-connection-status');
   if(statusNode.textContent!==status)statusNode.textContent=status;
-  statusNode.hidden=!status;
-  const [gpuState,tone]=gpuStatus(acc);
+  el('chat-connection-notice').hidden=!status;
+  el('chat-view-accounts').hidden=ready;
   pill.className='badge '+tone;
   if(pill.textContent!==gpuState)pill.textContent=gpuState;
-  const accountName=acc?'Cuenta '+acc.account+(acc.nickname||acc.username?' · '+name(acc):''):'Elegí una cuenta';
+  const accountName=acc?'Cuenta '+acc.account+' · '+uiText(acc.label):'Elegí una cuenta';
   setJobText('chat-server-account',accountName);
   el('chat-server-account').title=accountName;
   const stopping=operation?.status==='running'&&['stop','stop_all'].includes(operation.action);
-  el('chat-active-subtitle').textContent=acc?uiText(acc.label)+' · '+fmt(acc.context)+' de contexto':'Seleccioná una cuenta para empezar.';
   el('chat-send-btn').disabled=!ready||stopping||sendingChatMessage||uploadingChatFiles||Boolean(activeRequestId);
   el('chat-cancel-btn').hidden=!activeRequestId||chatRequestConversation!==activeChatId;
 }

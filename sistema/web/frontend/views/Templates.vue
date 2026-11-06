@@ -41,15 +41,12 @@
       <p id="template-result" role="status" class="hint"></p>
       <div id="template-download"></div>
       <div class="buttons" style="margin: 16px 0">
-        <button class="primary operation" onclick="startAccount(el('template-account').value)">
-          <i data-icon="play"></i>Encender cuenta elegida</button
+        <button onclick="navigate('cuentas')">
+          <i data-icon="users"></i>Ir a Cuentas</button
         ><button onclick="openChatForAccount(el('template-account').value)">
           <i data-icon="chat"></i>Abrir en Chat Web</button
         ><button
-          onclick="
-            navigate('configuracion');
-            setting('connection');
-          "
+          onclick="openClientSetupForAccount(el('template-account').value)"
         >
           Preparar configuración de clientes <i data-icon="arrow"></i>
         </button>

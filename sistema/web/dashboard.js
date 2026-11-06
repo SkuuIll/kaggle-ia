@@ -186,31 +186,19 @@ async function refresh(){if(refreshBusy)return;refreshBusy=true;try{const r=awai
 async function refreshNow(){try{await post('/api/refresh',{});toast('Solicitamos una nueva consulta a Kaggle.');await refresh();}catch(e){toast(e.message,true);}}
 function select(id,accounts,all=false){const n=el(id);if(!n)return;const previous=n.value||(id==='chat-account'?chatPreference('account'):'');const options=(id==='chat-account'&&!accounts.length?'<option value="">Sin cuentas</option>':'')+(all?'<option value="all">Todas las cuentas</option>':'')+accounts.map(a=>`<option value="${esc(a.key)}">${esc(id==='chat-account'?'Cuenta '+a.account+' · '+name(a):name(a)+' · '+(a.label.split(' ')[0]||'IA'))}</option>`).join('');if(n.innerHTML!==options){n.innerHTML=options;if([...n.options].some(o=>o.value===previous))n.value=previous;}}
 
-function modelTelemetry(a){
-  const t=templateCatalog?.models?.find(m=>m.id===a.template_id||m.filename===a.filename);
-  if(t)return {tps:'TPS en Chat IA',arch:t.arch||'MoE / GGUF'};
-  if(a.filename.includes('A3B'))return {tps:'TPS en Chat IA',arch:'MoE A3B (3B activos)'};
-  if(a.filename.includes('27B')||a.filename.includes('32B'))return {tps:'TPS en Chat IA',arch:'Denso 27B+'};
-  return {tps:'TPS en Chat IA',arch:'GGUF T4'};
-}
-
 function renderLaunchConsole(){
-  const accounts=latest.accounts.filter(a=>a.configured);
-  const primary=accounts.find(active)||accounts.find(a=>!unknown(a))||accounts[0];
+  const configured=latest.accounts.filter(a=>a.configured);
+  const ready=configured.find(a=>a.state==='RUNNING'&&a.live?.model_ready===true&&!accountPowerJob(a));
+  const primary=ready||configured.find(active)||configured[0];
   if(!primary){
-    html('workflow-stepper',`<p class="launch-label">PRIMERA CONEXIÓN</p><h2>Agregá una cuenta</h2><p>Vinculá Kaggle para iniciar un servidor.</p><button class="primary operation" onclick="openAccount()">Agregar cuenta</button>`);
+    html('workflow-stepper',`<h2>Conectá tu primera cuenta</h2><p>Vinculá Kaggle para consultar la cuota y administrar la GPU.</p><button onclick="navigate('cuentas')">Ver cuentas</button>`);
     return;
   }
-  const connected=primary.state==='RUNNING'&&primary.live?.capabilities?.includes('session-v1');
-  const title=connected?'Servidor conectado':states[primary.state]||primary.state;
-  const action=active(primary)||busy()||unknown(primary)
-    ? `<button class="quiet" onclick="navigate('actividad')">Ver actividad</button>`
-    : `<button class="primary operation" onclick="startAccount('${primary.key}')">${icon('play')}Iniciar servidor</button>`;
   html('workflow-stepper',`
-    <p class="launch-label">CUENTA ${esc(primary.account)} · ${esc(name(primary))}</p>
-    <h2>${esc(title)}</h2>
-    <p>${esc(uiText(primary.label))}</p>
-    ${action}`);
+    <div class="launch-account"><span class="launch-label">CUENTA ${esc(primary.account)} · ${esc(name(primary))}</span>${badge(primary)}</div>
+    <h2>${esc(uiText(primary.label))}</h2>
+    <p>${esc(availableQuota(primary))}</p>
+    <button class="quiet" onclick="navigate('cuentas')">Ver cuentas ${icon('arrow')}</button>`);
 }
 
 function render(){
@@ -272,12 +260,16 @@ function updateQuotaCountdowns(){
   });
 }
 
+function availableQuota(a){
+  return Number.isFinite(a.quota?.available_seconds)?hours(a.quota.available_seconds)+' libres':'Horas sin confirmar';
+}
+
 function quotaCard(a){
   const q=a.quota;
   const measured=q?.allowed_seconds>0&&Number.isFinite(q.used_seconds)&&Number.isFinite(q.reserved_seconds);
   const percent=measured?Math.max(0,Math.min(100,(q.used_seconds+q.reserved_seconds)/q.allowed_seconds*100)):null;
   const bar=measured?`<div class="bar" role="meter" aria-label="Cuota utilizada o reservada" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><i class="${percent>=80?'warn':''}" style="width:${percent}%"></i></div>`:'';
-  return `<div class="quota"><div class="quota-head"><b>${esc(name(a))}</b><strong>${Number.isFinite(q?.available_seconds)?hours(q.available_seconds)+' libres':'Horas sin confirmar'}</strong></div>
+  return `<div class="quota"><div class="quota-head"><b>${esc(name(a))}</b><strong>${esc(availableQuota(a))}</strong></div>
     ${bar}<dl class="quota-breakdown"><div><dt>Límite</dt><dd>${hours(q?.allowed_seconds)}</dd></div><div><dt>Usadas</dt><dd>${hours(q?.used_seconds)}</dd></div><div><dt>Reservadas</dt><dd>${hours(q?.reserved_seconds)}</dd></div></dl>
     <div class="quota-reset"><span>Renovación</span>${quotaRenewal(q)}</div></div>`;
 }
@@ -302,10 +294,6 @@ function renderDashboard(){
   el('pool-status-pill').className=poolReady?'badge good':'badge';
   el('individual-accounts-count').textContent=latest.accounts.filter(a=>a.configured).length+' configuradas';
   html('quota-list',accounts.length?accounts.map(quotaCard).join(''):'<div class="empty">Agregá una cuenta para consultar su cuota.</div>');
-  html('model-cards',accounts.length?accounts.map(a=>{
-    const tm=modelTelemetry(a);
-    return `<article class="model-card"><div class="card-head"><div><div class="account-name">${esc(name(a))}</div><div class="account-caption">Conexión ${a.account}${a.username?' · @'+esc(a.username):''}</div></div>${badge(a)}</div><div class="model-label">${esc(uiText(a.label))}</div><div class="chips"><span class="chip tps">${icon('activity')} ${esc(tm.tps)}</span><span class="chip">${esc(uiText(tm.arch))}</span><span class="chip">${fmt(a.context)} ctx</span><span class="chip">${esc(a.filename.match(/Q[0-9][A-Z0-9_]*/i)?.[0]||'GGUF')}</span><span class="chip">${hours(a.quota?.available_seconds)} libres</span></div><div class="card-quick-actions"><button onclick="openChatForAccount('${a.key}')">${icon('chat')}Chatear</button><button onclick="openModelsForAccount('${a.key}')">${icon('cpu')}Cambiar / TPS</button><button onclick="quickDiagnose('${a.key}')">${icon('shield')}Diagnosticar</button><button onclick="openClientSetupForAccount('${a.key}')">${icon('code')}Clientes IDE</button></div><div class="card-foot"><small>${a.live&&!a.live.error?'Canal de control disponible':'FlashAttention + KV Q8_0'}</small>${gpuControl(a)}</div></article>`;
-  }).join(''):'<article class="panel empty"><b>Tu próximo modelo empieza acá.</b>Conectá una API de Kaggle para preparar tu espacio.<br><button class="primary operation" style="margin-top:15px" onclick="openAccount()">Agregar cuenta</button></article>');
 }
 
 function openChatForAccount(key){
@@ -321,9 +309,8 @@ function openModelsForAccount(key){
 }
 function openClientSetupForAccount(key){
   navigate('configuracion');
-  setting('connection');
+  setting('clients');
   if(key&&el('client-account')){el('client-account').value=key;clearClientConfig();}
-  if(key&&el('ops-account')){el('ops-account').value=key;renderOperationControls();}
 }
 async function quickDiagnose(key){
   toast('Comprobando estado en Kaggle, API HTTPS y memoria…');
@@ -361,28 +348,31 @@ function renderChart(accounts){
 }
 function renderAccounts(){
   if(!latest)return;
-  const search=el('account-search').value.toLowerCase();
+  const search=el('account-search').value.trim().toLowerCase();
   const configured=latest.accounts.filter(a=>a.configured);
-  const accounts=configured.filter(a=>(name(a)+' '+a.username+' '+a.label).toLowerCase().includes(search));
+  const accounts=configured.filter(a=>[name(a),a.username,a.label,'cuenta '+a.account].join(' ').toLowerCase().includes(search));
   el('accounts-empty').hidden=configured.length>0;
+  el('stop-all-accounts').dataset.unavailable=String(!configured.some(a=>active(a)||unknown(a)));
   html('account-rows',accounts.map(a=>{
     const key=esc(a.key),label=esc(name(a));
-    return `<tr role="row">
-      <td role="cell"><b>${label}</b><small>Cuenta ${a.account}</small></td>
-      <td role="cell">${badge(a)}</td>
-      <td role="cell"><b>${Number.isFinite(a.quota?.available_seconds)?hours(a.quota.available_seconds)+' libres':'Horas sin confirmar'}</b>${quotaRenewal(a.quota)}</td>
-      <td role="cell"><div class="table-model">${esc(uiText(a.label))}</div><small>${fmt(a.context)} tokens de contexto</small></td>
-      <td role="cell"><div class="row-actions">
+    return `<article class="model-card account-card">
+      <div class="card-head"><div><h3>${label}</h3><span class="hint">Cuenta ${a.account}</span></div>${badge(a)}</div>
+      <p class="model-label">${esc(uiText(a.label))}</p>
+      <div class="account-card-quota"><strong>${esc(availableQuota(a))}</strong><div class="quota-reset"><span>Renovación</span>${quotaRenewal(a.quota)}</div></div>
+      <div class="account-card-actions">
+        ${gpuControl(a)}
         <button type="button" onclick="openChatForAccount('${key}')">${icon('chat')} Chat</button>
         <details class="account-more"><summary aria-label="Más acciones para ${label}">Más</summary>
-          <div><button type="button" onclick="openAccount('${key}')">Actualizar API</button>
+          <div><button type="button" onclick="openModelsForAccount('${key}')">Cambiar modelo</button>
+          <button type="button" onclick="openClientSetupForAccount('${key}')">Clientes IDE</button>
+          <button type="button" onclick="quickDiagnose('${key}')">Diagnosticar</button>
+          <button type="button" onclick="openAccount('${key}')">Actualizar API</button>
           <button type="button" onclick="renameAccount('${key}')">Renombrar</button>
-          <button type="button" onclick="openModelsForAccount('${key}')">Cambiar modelo</button>
           <button type="button" class="danger" onclick="removeAccount('${key}')">Quitar cuenta</button></div>
         </details>
-      </div></td>
-    </tr>`;
-  }).join('')||(configured.length?'<tr role="row"><td role="cell" colspan="5" class="empty">No hay cuentas que coincidan con la búsqueda.</td></tr>':''));
+      </div>
+    </article>`;
+  }).join('')||(configured.length?'<p class="empty">No hay cuentas que coincidan con la búsqueda.</p>':''));
 }
 function eventRows(events){return events.length?events.map(e=>`<div class="event"><span class="event-icon ${e.status==='error'?'bad':''}">${icon(e.status==='error'?'x':'check')}</span><div class="event-main">${esc(actions[e.action]||'Operación del panel')}<small>${e.profile?'Conexión '+(account(e.profile)?.account||'')+' · ':''}${e.status==='done'?'Completada':'No se completó; revisá el resultado'}${e.detail?' · '+esc(e.detail):''}</small></div><time datetime="${new Date(e.timestamp*1000).toISOString()}">${new Date(e.timestamp*1000).toLocaleString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</time></div>`).join(''):'<div class="empty"><b>Todavía no hay operaciones registradas.</b>Los inicios, apagados y cambios aparecerán acá.</div>';}
 function renderHistory(){if(!latest)return;const filter=el('history-filter').value,events=latest.history||[];html('recent-events',eventRows(events.slice(0,4)));const filtered=events.filter(e=>filter==='all'||e.status===filter);html('operation-history',filtered.length||filter==='all'?eventRows(filtered):'<div class="empty"><b>No hay operaciones con este resultado.</b>Podés cambiar el filtro para ver las demás.</div>');}
@@ -451,6 +441,7 @@ function renderJob(){
     running?(actions[j.action]||'Operación')+' en curso':j.status==='done'?'Operación completada':j.status==='error'?'No se completó la operación':'Sin operaciones en curso',
     running?'Consultá el registro para seguir el progreso.':'El registro muestra el resultado de la operación.',
   ];
+  el('current-operation').dataset.status=j.status;
   setJobText('jobtitle',title);
   el('job-pulse').hidden=!running;
   setJobText('job-note',note);
@@ -463,6 +454,11 @@ function renderJob(){
   }
   const elapsed=j.started_at?Math.max(0,Math.floor(((j.finished_at||Date.now()/1000)-j.started_at)/60)):0;
   setJobText('job-duration',j.started_at?(elapsed?elapsed+' min transcurridos':'Menos de un minuto'):'');
+  const runtime=startupRuntime(j);
+  const checked=account(j.key)?.checked_at;
+  const timestamp=j.finished_at||runtime?.timestamp||checked;
+  const updateLabel=j.finished_at?'Último resultado':runtime?'Último informe del notebook':'Última consulta a Kaggle';
+  setJobText('job-updated',timestamp?updateLabel+' · '+new Date(timestamp*1000).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'');
   el('operation-notice').hidden=!running||page==='actividad'||page==='chat';
   setJobText('operation-label',title);
   setJobText('operation-detail',note);
@@ -475,16 +471,28 @@ function renderJob(){
   if(!powerSubmission)seenJob={id:j.id,status:j.status};
 }
 
+const modelBenchmarks={
+  'qwen36-heretic-compact':{speed:'66,5',details:'Código corto · registro del 6 nov 2026'},
+  'thinkingcap-nemotron':{speed:'78,9',details:'Código corto · llama.cpp · registro del 6 nov 2026'},
+  'qwen38-heretic-exl3':{speed:'49,2',details:'Mediana en código corto · EXL3 + DFlash2 · registro del 5 nov 2026'},
+};
+
+function benchmarkLabel(id){
+  const result=modelBenchmarks[id];
+  return result?result.speed+' tokens/s':'Sin medición registrada';
+}
+
 function renderQuickTpsModels(){
   const box=el('quick-tps-models');
   if(!box||!templateCatalog||!latest)return;
   const key=el('model-account')?.value;
   const a=account(key);
+  if(!a){html('quick-tps-models','<p class="hint">Agregá una cuenta para elegir un modelo.</p>');return;}
   const fastModels=templateCatalog.models;
   const fmtCtx=n=>n>=1000000?'1M':Math.round(n/1024)+'k';
   html('quick-tps-models',fastModels.map(t=>{
     const isCurrent=a&&(a.template_id===t.id||a.filename===t.filename);
-    return `<div class="tps-card ${isCurrent?'current':''}"><div class="tps-card-top"><b>${esc(uiText(t.name))}</b><span class="chip tps">${icon('activity')} ${esc(t.id==='qwen36-heretic-compact'?'66,5 TPS código':t.id==='thinkingcap-nemotron'?'78,9 TPS código':t.id==='qwen38-heretic-exl3'?'49,2 TPS código':'Sin medición comparable')}</span></div><div class="tps-card-meta">${esc(t.arch||'MoE / GGUF')} · ${(t.size_bytes/1e9).toFixed(1)} GB · ${fmtCtx(t.context)} activo (${fmtCtx(t.native_context||t.context)} nativo)</div><div class="tps-card-meta">${esc(t.vram_fit||'Tesla T4 ×2')}</div><div class="buttons"><button type="button" class="${isCurrent?'':'primary'} operation" ${busy()||isCurrent?'disabled':''} onclick="installTemplateForAccount('${esc(key)}','${esc(t.id)}')">${isCurrent?'Configurado en esta cuenta':'Cambiar a este modelo'}</button></div></div>`;
+    return `<div class="tps-card ${isCurrent?'current':''}"><div class="tps-card-top"><b>${esc(uiText(t.name))}</b><span class="chip tps">${icon('activity')} ${esc(benchmarkLabel(t.id))}</span></div><div class="tps-card-meta">${esc(t.arch||'MoE / GGUF')} · ${(t.size_bytes/1e9).toFixed(1)} GB · ${fmtCtx(t.context)} activo (${fmtCtx(t.native_context||t.context)} nativo)</div>${modelBenchmarks[t.id]?`<div class="tps-card-meta">${esc(modelBenchmarks[t.id].details)}</div>`:''}<div class="tps-card-meta">${esc(t.vram_fit||'Tesla T4 ×2')}</div><div class="buttons"><button type="button" class="${isCurrent?'':'primary'} operation" data-unavailable="${isCurrent}" ${busy()||isCurrent?'disabled':''} onclick="installTemplateForAccount('${esc(key)}','${esc(t.id)}')">${isCurrent?'Configurado en esta cuenta':'Preparar para el próximo arranque'}</button></div></div>`;
   }).join(''));
 }
 
@@ -492,8 +500,12 @@ function loadModel(force=false){
   const a=account(el('model-account').value);
   el('model-form').hidden=!a;
   if(!a){el('model-current').textContent='Agregá una cuenta para configurar su modelo.';return;}
-  const tm=modelTelemetry(a);
-  el('model-current').innerHTML=`<strong>Activo en ${esc(name(a))}:</strong> ${esc(uiText(a.label))} · <strong>${icon('activity')} ${esc(tm.tps)}</strong> (${esc(uiText(tm.arch))})`;
+  const loaded=a.state==='RUNNING'&&a.live?.model_ready===true;
+  const observed=loaded?'Alias '+a.model+' listo':a.state==='RUNNING'?'Esperando confirmación del modelo':gpuStatus(a)[0];
+  html('model-current',`<dl class="model-state-grid">
+    <div><dt>Modelo cargado ahora</dt><dd>${esc(observed)}</dd></div>
+    <div><dt>Configurado para el próximo arranque</dt><dd>${esc(uiText(a.label))}</dd><dd class="hint">${fmt(a.context)} tokens de contexto</dd></div>
+  </dl>`);
   renderQuickTpsModels();
   const signature=a.key+'|'+a.repo+'|'+a.context;
   if(!force&&modelLoaded===signature)return;
@@ -522,7 +534,22 @@ function renameAccount(key){renameKey=key;el('rename-input').value=name(account(
 el('rename-form').onsubmit=async e=>{e.preventDefault();if(await act('rename_account',renameKey,{name:el('rename-input').value.trim()}))el('rename-dialog').close();};
 async function removeAccount(key){const a=account(key);if(await ask('Quitar '+name(a),'Primero se comprobará su apagado. Si está activa, se intentará detenerla.\nLa credencial se archivará en privado para recuperación y se liberará la conexión. La cuenta de Kaggle se conserva.','Apagar y quitar cuenta',true))await act('remove_account',key,{stop:true},true);}
 async function inspectModel(){const button=el('inspect-button');button.disabled=true;el('inspect-result').textContent='Consultando Hugging Face…';try{const info=await post('/api/model/inspect',{repo:el('model-repo').value});inspected=info;el('model-repo').value=info.repo;el('model-file').innerHTML=info.files.map(f=>`<option value="${esc(f)}">${esc(f)}</option>`).join('');el('inspect-result').textContent=`${info.files.length} archivos disponibles.${info.native_context?' Contexto nativo informado: '+fmt(info.native_context)+'.':''} Elegí un GGUF.`;}catch(e){el('inspect-result').textContent=e.message;}finally{button.disabled=false;}}
-el('model-form').onsubmit=async e=>{e.preventDefault();const key=el('model-account').value,a=account(key),other=latest.accounts.find(b=>b.key!==key&&active(b));if(!a)return;if(el('model-repo').value.trim()!==a.repo&&inspected?.repo!==el('model-repo').value.trim()){toast('Buscá los archivos del repositorio antes de aplicar el modelo.',true);return;}if(await ask('Aplicar modelo y arrancar',`Se detendrá el modelo de ${name(a)}${other?' y también la sesión de '+name(other):''}. Después se descargará el archivo elegido en Kaggle. El inicio consume horas de GPU.`,'Aplicar e iniciar'))await act('model',key,{repo:el('model-repo').value,filename:el('model-file').value,context:Number(el('model-context').value),start:true,switch:Boolean(other)},true);};
+el('model-form').onsubmit=async event=>{
+  event.preventDefault();
+  const key=el('model-account').value,a=account(key);
+  if(!a)return;
+  const repo=el('model-repo').value.trim();
+  if(repo!==a.repo&&inspected?.repo!==repo){
+    toast('Buscá los archivos del repositorio antes de guardar el modelo.',true);
+    return;
+  }
+  const details=active(a)||unknown(a)
+    ?'El panel solicitará y comprobará la parada antes de guardar el modelo.'
+    :'El modelo quedará guardado para el próximo arranque.';
+  if(await ask('Guardar modelo para '+name(a),details,'Guardar modelo')){
+    await act('model',key,{repo,filename:el('model-file').value,context:Number(el('model-context').value)},true);
+  }
+};
 el('timer-form').onsubmit=async e=>{e.preventDefault();if(await act('timers',el('timer-account').value,{idle:Number(el('timer-idle').value),maximum:Number(el('timer-maximum').value)}))toast('Cambio enviado. Se aplicará al próximo arranque.');};
 async function privateBackup(){if(await ask('Respaldar conexión privada','El ZIP contiene tus APIs y la clave SSH y no está cifrado. Guardalo en privado y no lo publiques.','Crear respaldo privado'))await act('export_private');}
 async function restorePrivate(input){try{const file=input.files[0];if(!file)return;if(file.size>16*1024*1024)throw Error('El ZIP es demasiado grande.');if(!await ask('Importar conexión','Se reemplazará la conexión. Todas las cuentas actuales deben tener su apagado confirmado.','Importar conexión'))return;const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(const v of bytes)binary+=String.fromCharCode(v);await act('restore',null,{zip:btoa(binary)},true);}catch(e){toast(e.message,true);}finally{input.value='';}}
@@ -535,17 +562,17 @@ async function logout(){try{await post('/api/logout',{});location.replace('/logi
 let clientConfig=null,clientKeyShown=false,clientDefaultSet=false;
 function clearClientConfig(){clientConfig=null;clientKeyShown=false;el('client-config-area').hidden=true;el('client-api-key').value='';el('client-snippet').textContent='';el('client-probe-result').textContent='';}
 async function prepareClientConfig(){const button=el('client-prepare');button.disabled=true;try{clientConfig=await post('/api/client-config',{key:el('client-account').value});if(clientConfig.profile_key!==el('client-account').value){clearClientConfig();return;}clientKeyShown=false;el('client-api-key').type='password';el('client-api-key').value=clientConfig.api_key;el('client-show-key').textContent='Mostrar clave';el('client-config-area').hidden=false;el('client-package').href='/api/download/'+encodeURIComponent(clientConfig.download.id);renderClientSnippet();}catch(e){toast(e.message,true);}finally{button.disabled=false;}}
-function renderClientSnippet(){if(!clientConfig)return;const type=el('snippet-client').value,raw=clientConfig.configs[type];el('client-snippet').textContent=clientKeyShown?raw:raw.split(clientConfig.api_key).join('CLAVE_OCULTA_USA_EL_BOTON_COPIAR');el('client-snippet-help').textContent=type==='paseo'?'Archivo ~/.paseo/config.json. Primero configurá OpenCode. El ejemplo requiere opencode en PATH; el paquete automático resuelve su ruta.':type==='opencode'?'Archivo ~/.config/opencode/opencode.json. Si ya tenés otros proveedores, combiná este bloque o usá el paquete automático.':'Archivo ~/.continue/config.yaml. Conservá tus otros modelos al combinarlo; el paquete automático lo hace por vos.';}
+function selectedClient(){return document.querySelector('input[name=ide-client]:checked').value;}
+function renderClientSnippet(){if(!clientConfig)return;const type=selectedClient(),raw=clientConfig.configs[type];el('client-snippet').textContent=clientKeyShown?raw:raw.split(clientConfig.api_key).join('CLAVE_OCULTA_USA_EL_BOTON_COPIAR');el('client-snippet-help').textContent=type==='paseo'?'Archivo ~/.paseo/config.json. Primero configurá OpenCode. El ejemplo requiere opencode en PATH; el paquete automático resuelve su ruta.':type==='opencode'?'Archivo ~/.config/opencode/opencode.json. Si ya tenés otros proveedores, combiná este bloque o usá el paquete automático.':'Archivo ~/.continue/config.yaml. Conservá tus otros modelos al combinarlo; el paquete automático lo hace por vos.';}
 function toggleClientKey(){if(!clientConfig)return;clientKeyShown=!clientKeyShown;el('client-api-key').type=clientKeyShown?'text':'password';el('client-show-key').textContent=clientKeyShown?'Ocultar clave':'Mostrar clave';renderClientSnippet();}
 async function copyClientKey(){try{await navigator.clipboard.writeText(clientConfig.api_key);toast('Clave de la conexión copiada.');}catch(e){toast('No se pudo copiar la clave.',true);}}
-async function copyClientConfig(){try{await navigator.clipboard.writeText(clientConfig.configs[el('snippet-client').value]);toast('Configuración completa copiada, incluida la clave API.');}catch(e){toast('No se pudo copiar la configuración.',true);}}
+async function copyClientConfig(){try{await navigator.clipboard.writeText(clientConfig.configs[selectedClient()]);toast('Configuración completa copiada, incluida la clave API.');}catch(e){toast('No se pudo copiar la configuración.',true);}}
 async function probeClientAPI(){if(!clientConfig)return;el('client-probe-result').textContent='Comprobando la API…';try{const r=await fetch(clientConfig.url+'/models',{headers:{Authorization:'Bearer '+clientConfig.api_key}});if(!r.ok)throw Error(r.status===503?'El modelo está apagado o cargando. Revisá Actividad.':r.status===401?'La clave de la conexión no es válida.':'La API devolvió HTTP '+r.status);const d=await r.json();el('client-probe-result').textContent='API accesible (HTTP 200). Modelos informados: '+(d.data||[]).map(m=>m.id).join(', ')+'. Esta prueba consulta modelos; no genera texto.';}catch(e){el('client-probe-result').textContent=e.message;}}
 
 async function diagnoseAccount(){
  const button=el('ops-result');button.textContent='Revisando Kaggle, HTTPS y modelo cargado…';
  try{const d=await post('/api/diagnose',{key:el('ops-account').value});button.textContent=`${d.message} Kaggle: ${d.state}. API: ${d.api_status||'sin conexión'}. Modelo en memoria: ${d.model_loaded?'sí':'no'}. ${d.paseo}`;}catch(e){button.textContent=e.message;}
 }
-async function prepareWork(){const key=el('ops-account').value;if(!key)return;await startAccount(key);}
 async function extendWork(){const key=el('ops-account').value;if(!key)return;if(await ask('Continuar trabajando','Agrega 30 minutos al límite de esta sesión y renueva el plazo de inactividad. La GPU seguirá consumiendo cuota. Requiere el notebook actualizado.','Extender sesión'))await act('extend',key);}
 async function savePerformanceProfile(){const key=el('ops-account').value;if(!key)return;if(await act('profile',key,{preset:el('performance-profile').value}))toast('Guardado para el próximo arranque. Prepará de nuevo la configuración de tus clientes.');}
 
@@ -587,7 +614,7 @@ function renderTemplates(){
   const fmtCtx=n=>n>=1000000?'1M':Math.round(n/1024)+'k';
   cards.push(...modelList.map(t=>{
     const isInstalled=curAcc&&(curAcc.template_id===t.id||curAcc.filename===t.filename);
-    return `<article class="recipe"><div class="recipe-top"><span class="recipe-category">${esc(t.category)}${isInstalled?' · ACTIVA EN ESTA CUENTA':''}</span><span class="chip tps">${icon('activity')} ${esc(t.id==='qwen36-heretic-compact'?'66,5 TPS código':t.id==='thinkingcap-nemotron'?'78,9 TPS código':t.id==='qwen38-heretic-exl3'?'49,2 TPS código':'Sin medición comparable')}</span></div><h3>${esc(uiText(t.name))}</h3><p>${esc(uiText(t.description))}</p><dl class="recipe-facts"><div><dt>Velocidad T4</dt><dd>${esc(t.id==='qwen36-heretic-compact'?'66,5 TPS código':t.id==='thinkingcap-nemotron'?'78,9 TPS código':t.id==='qwen38-heretic-exl3'?'49,2 TPS código':'Sin medición comparable')}</dd></div><div><dt>Pesos</dt><dd>${((t.download_bytes||t.size_bytes)/1e9).toFixed(2)} GB</dd></div><div><dt>Contexto (act/nat)</dt><dd>${fmtCtx(t.context)} / ${fmtCtx(t.native_context||t.context)}</dd></div></dl><p class="hint"><strong>Arquitectura:</strong> ${esc(t.arch||'GGUF')} · ${esc(t.vram_fit||'2× Tesla T4')}</p><p class="hint">Revisión ${esc(t.revision.slice(0,10))} · ${esc(t.filename.match(/Q\d_[A-Z0-9_]+|Q\d_K/i)?.[0]||'GGUF')} · ${esc(t.license)}</p><div class="buttons"><button class="${isInstalled?'':'primary'}" ${busy()?'disabled':''} onclick="installTemplate('${t.id}')">${isInstalled?'Reinstalar plantilla':'Instalar plantilla'}</button><a href="https://huggingface.co/${esc(t.repo)}/tree/${esc(t.revision)}" target="_blank" rel="noreferrer">Ver en HF ${icon('external')}</a></div></article>`;
+    return `<article class="recipe"><div class="recipe-top"><span class="recipe-category">${esc(t.category)}${isInstalled?' · ACTIVA EN ESTA CUENTA':''}</span><span class="chip tps">${icon('activity')} ${esc(benchmarkLabel(t.id))}</span></div><h3>${esc(uiText(t.name))}</h3><p>${esc(uiText(t.description))}</p><dl class="recipe-facts"><div><dt>Velocidad T4</dt><dd>${esc(benchmarkLabel(t.id))}</dd></div><div><dt>Pesos</dt><dd>${((t.download_bytes||t.size_bytes)/1e9).toFixed(2)} GB</dd></div><div><dt>Contexto (act/nat)</dt><dd>${fmtCtx(t.context)} / ${fmtCtx(t.native_context||t.context)}</dd></div></dl><p class="hint"><strong>Arquitectura:</strong> ${esc(t.arch||'GGUF')} · ${esc(t.vram_fit||'2× Tesla T4')}</p><p class="hint">Revisión ${esc(t.revision.slice(0,10))} · ${esc(t.filename.match(/Q\d_[A-Z0-9_]+|Q\d_K/i)?.[0]||'GGUF')} · ${esc(t.license)}</p><div class="buttons"><button class="${isInstalled?'':'primary'}" ${busy()?'disabled':''} onclick="installTemplate('${t.id}')">${isInstalled?'Reinstalar plantilla':'Instalar plantilla'}</button><a href="https://huggingface.co/${esc(t.repo)}/tree/${esc(t.revision)}" target="_blank" rel="noreferrer">Ver en HF ${icon('external')}</a></div></article>`;
   }));
  }
  if(filter==='all'||filter==='tools')cards.push(...templateCatalog.tools.filter(matches).map(t=>`<article class="recipe"><span class="recipe-category">Herramienta local</span><h3>${esc(uiText(t.name))}</h3><p>${esc(uiText(t.description))}</p><p class="hint">${esc(t.packages.join(' · '))}</p><p class="hint">Instalación en entorno aislado. Requiere Python 3.12. Sin inicio automático de GPU.</p><div class="buttons"><button onclick="prepareTool('${t.id}')">Preparar instalador privado</button><a href="${esc(t.source)}" target="_blank" rel="noreferrer">GitHub ${icon('external')}</a></div></article>`));
@@ -635,19 +662,20 @@ function renderPalette(){
   const configured=latest?.accounts?.filter(a=>a.configured)||[];
   const items=[
     {label:'Ir a Chat IA Multimodal',sub:'Enviar documentos, fotos, videos y código con TPS por respuesta',run:()=>navigate('chat')},
-    {label:'Optimizar TPS y cambiar modelo en Tesla T4',sub:'Comparar MoE A3B (45–65 TPS) vs 1× GPU vs Denso',run:()=>navigate('modelos')},
+    {label:'Optimizar TPS y cambiar modelo en Tesla T4',sub:'Ver modelo configurado y mediciones de código corto',run:()=>navigate('modelos')},
     {label:'Nueva conversación en Chat IA',sub:'Crear sesión limpia con tu modelo',run:()=>{navigate('chat');createChatConversation();}},
     {label:'Ir al Dashboard',sub:'Resumen de cuotas, tokens y sesiones',run:()=>navigate('dashboard')},
     {label:'Ir a Catálogo de Plantillas',sub:'Modelos Qwen3 Coder 30B A3B, Cyber-Tiel MTP, Qwen3.5 9B…',run:()=>navigate('plantillas')},
     {label:'Ir a Cuentas de Kaggle',sub:'Agregar o administrar tokens API',run:()=>navigate('cuentas')},
     {label:'Ir a Actividad y Logs en vivo',sub:'Ver progreso de arranque o parada en Kaggle',run:()=>navigate('actividad')},
-    {label:'Configurar clientes IDE (Continue / OpenCode / Paseo)',sub:'Generar paquete privado con URL HTTPS y clave',run:()=>{navigate('configuracion');setting('connection');}},
+    {label:'Configurar clientes IDE (Continue / OpenCode / Paseo)',sub:'Generar paquete privado con URL HTTPS y clave',run:()=>{navigate('configuracion');setting('clients');}},
+    {label:'Seguridad del panel',sub:'Cambiar contraseña o gestionar usuarios invitados',run:()=>{navigate('configuracion');setting('security');}},
     {label:'Exportar código público para GitHub',sub:'Generar ZIP limpio sin claves ni .private',run:()=>act('export_program')},
-    {label:'Apagar todas las GPU en Kaggle',sub:'Confirmar parada de todas las sesiones',run:()=>stopAll()}
+    {label:'Ver controles de GPU',sub:'Encender o apagar desde Cuentas',run:()=>navigate('cuentas')}
   ];
   for(const a of configured){
     items.push({label:`Chatear con ${name(a)}`,sub:a.label,run:()=>openChatForAccount(a.key)});
-    items.push({label:`Encender GPU de ${name(a)}`,sub:`Estado actual: ${states[a.state]||a.state}`,run:()=>startAccount(a.key)});
+    items.push({label:`Ver controles de ${name(a)}`,sub:`Estado actual: ${states[a.state]||a.state}`,run:()=>navigate('cuentas')});
     items.push({label:`Diagnosticar conexión de ${name(a)}`,sub:'Probar Kaggle + API HTTPS + modelo en memoria',run:()=>quickDiagnose(a.key)});
   }
   const filtered=items.filter(i=>(i.label+' '+i.sub).toLowerCase().includes(q));

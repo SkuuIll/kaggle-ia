@@ -77,7 +77,6 @@
             </button>
             <div class="chat-thread-meta">
               <h2 id="chat-active-title">Nueva conversación</h2>
-              <p id="chat-active-subtitle" class="hint">Seleccioná una cuenta para empezar.</p>
             </div>
           </div>
           <div class="chat-header-actions">
@@ -228,28 +227,11 @@
                   this.value = '';
                 "
               />
-              <input
-                id="chat-file-image"
-                type="file"
-                accept="image/*"
-                multiple
-                onchange="
-                  handleChatFiles(this.files);
-                  this.value = '';
-                "
-              />
-              <input
-                id="chat-file-media"
-                type="file"
-                accept="video/*,audio/*"
-                multiple
-                onchange="
-                  handleChatFiles(this.files);
-                  this.value = '';
-                "
-              />
             </div>
-            <p id="chat-connection-status" class="hint" role="status" hidden></p>
+            <div id="chat-connection-notice" class="chat-connection-notice" hidden>
+              <p id="chat-connection-status" class="hint" role="status"></p>
+              <button id="chat-view-accounts" type="button" class="quiet" onclick="navigate('cuentas')" hidden>Ver cuentas</button>
+            </div>
             <p id="chat-upload-status" class="hint" role="status" hidden></p>
             <div id="chat-pending-files" class="chat-pending-files" hidden></div>
             <textarea
@@ -267,28 +249,10 @@
                   type="button"
                   class="composer-tool-btn"
                   onclick="el('chat-file-all').click()"
-                  aria-label="Adjuntar documento o código"
-                  title="Adjuntar documento o código"
+                  aria-label="Adjuntar archivos"
+                  title="Adjuntar archivos"
                 >
                   <i data-icon="paperclip"></i>
-                </button>
-                <button
-                  type="button"
-                  class="composer-tool-btn"
-                  onclick="el('chat-file-image').click()"
-                  aria-label="Adjuntar foto o imagen"
-                  title="Adjuntar foto o imagen"
-                >
-                  <i data-icon="image"></i>
-                </button>
-                <button
-                  type="button"
-                  class="composer-tool-btn"
-                  onclick="el('chat-file-media').click()"
-                  aria-label="Adjuntar video o audio"
-                  title="Adjuntar video o audio"
-                >
-                  <i data-icon="video"></i>
                 </button>
               </div>
               <div class="chat-composer-actions">

@@ -1,6 +1,6 @@
 <template>
   <section data-view="actividad" hidden>
-    <article class="panel" style="margin-bottom: 22px">
+    <article id="current-operation" class="panel activity-operation">
       <div class="panel-title">
         <h2>
           <i id="job-pulse" class="pulse" hidden></i> <span id="jobtitle">Sin operaciones en curso</span>
@@ -8,6 +8,7 @@
         <span id="job-duration" class="small muted"></span>
       </div>
       <p id="job-note" class="hint" role="status">El inicio y el apagado se confirman contra Kaggle.</p>
+      <p id="job-updated" class="hint"></p>
       <ol id="job-stages" class="job-stages" aria-label="Etapas de la operación" hidden></ol>
       <details class="operation-log">
         <summary>Registro técnico</summary>

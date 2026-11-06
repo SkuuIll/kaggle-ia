@@ -300,7 +300,7 @@ td .quota-renewal { margin-top: 7px; }
 .chat-workspace .chat-conv-open > .icon { margin-top: 2px; color: var(--console-accent); }
 .chat-workspace .chat-conv-meta { min-width: 0; flex: 1; }
 .chat-workspace .chat-conv-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chat-workspace .chat-conv-sub { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; margin-top: 3px; font-size: 12px; }
+.chat-workspace .chat-conv-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; font-size: 12px; }
 .chat-workspace .chat-conv-del { opacity: 1; border-color: transparent; background: transparent; }
 @media (max-width: 900px) {
   .chat-history-heading { display: none; }
@@ -316,8 +316,9 @@ td .quota-renewal { margin-top: 7px; }
   background: currentColor;
   flex: 0 0 auto;
 }
-.badge.on, .badge.starting { color: var(--good); background: #17312a; border-color: #356450; }
-.badge.off, .badge.stopping { color: var(--bad); background: #341e25; border-color: #76434d; }
+.badge.on { color: var(--good); background: #17312a; border-color: #356450; }
+.badge:is(.starting, .stopping) { color: var(--warn); background: #332817; border-color: #66512c; }
+.badge.off { color: var(--muted); background: var(--surface-2); border-color: var(--line-strong); }
 @keyframes gpu-state-pulse { 50% { box-shadow: 0 0 0 4px currentColor; opacity: .5; } }
 @media (prefers-reduced-motion: no-preference) {
   body .badge:is(.starting,.stopping)::before { animation: gpu-state-pulse 1.6s ease-in-out 3 !important; }
@@ -388,3 +389,36 @@ td .quota-renewal { margin-top: 7px; }
 .observer-header { display: flex; align-items: center; gap: .75rem; }
 .observer-header p { margin: 0; }
 .panel-users .form-error, .observer-shell .form-error { color: #ffb6b8; }
+
+.launch-account { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.launch-account .launch-label { margin: 0; }
+.account-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 12px; }
+.account-card { min-width: 0; display: grid; align-content: start; gap: 12px; overflow-wrap: anywhere; }
+.account-card h3, .account-card .model-label { margin: 0; }
+.account-card .card-head { flex-wrap: wrap; gap: 8px; }
+.account-card-quota { border-block: 1px solid var(--line); padding: 10px 0; }
+.account-card-actions { display: flex; align-items: start; flex-wrap: wrap; gap: 8px; }
+.account-card-actions .gpu-action:empty { display: none; }
+.account-card-actions :is(button, summary) { min-height: 44px; }
+.account-card-actions .account-more[open] > div { grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
+.models-layout { grid-template-columns: minmax(0, 1fr); }
+.model-section-title { margin-top: 18px; }
+.model-state-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 12px; margin: 0; overflow-wrap: anywhere; }
+.model-state-grid dt { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+.model-state-grid dd { margin: 0; }
+.activity-operation { margin-bottom: 16px; }
+.activity-operation[data-status="running"] { border-color: #66512c; }
+.activity-operation[data-status="done"] { border-color: #356450; }
+.activity-operation[data-status="error"] { border-color: #76434d; }
+.activity-operation .job-stages li[aria-current="step"] { border-color: #66512c; }
+.activity-operation[data-status="done"] .job-stages li[aria-current="step"] { border-color: #356450; }
+.activity-operation[data-status="error"] .job-stages li[aria-current="step"] { border-color: #76434d; }
+.chat-connection-notice { display: flex; align-items: center; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; }
+.chat-connection-notice button { min-height: 36px; font-size: 12px; padding: 4px 8px; }
+.client-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); gap: 8px; border: 0; padding: 0; margin: 16px 0 10px; min-width: 0; }
+.client-picker legend { padding: 0 0 8px; }
+.client-picker label { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 8px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.client-picker label:has(:checked) { background: var(--surface-3); border-color: var(--console-focus); }
+.client-picker input { width: auto; margin: 0; accent-color: var(--console-accent); }
+.client-picker label span { grid-column: 2; color: var(--muted); font-size: 12px; }
+.client-actions { margin: 10px 0; }
