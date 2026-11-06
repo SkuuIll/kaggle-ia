@@ -178,6 +178,16 @@
             <input id="chat-max-tokens" type="number" step="256" min="256" max="32768" value="4096">
           </div>
         </div>
+        <div class="field">
+          <label for="chat-reasoning-effort">Nivel de razonamiento</label>
+          <select id="chat-reasoning-effort">
+            <option value="">Predeterminado del modelo</option>
+            <option value="none">Directo</option>
+            <option value="low">Breve</option>
+            <option value="medium">Medio</option>
+            <option value="xhigh">Profundo</option>
+          </select>
+        </div>
         <div class="buttons">
           <button class="primary" onclick="saveChatSettings()"><i data-icon="check"></i>Guardar ajustes</button>
           <button class="quiet" onclick="toggleChatSettings()">Cerrar</button>

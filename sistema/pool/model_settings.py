@@ -21,6 +21,7 @@ def update_model(path,key,repo,filename,revision,context,stopped):
         raise ValueError('Archivo GGUF invalido.')
     path=Path(path);data=json.loads(path.read_text(encoding='utf8'));profile=data['profiles'][key]
     profile.pop('template_id',None)
+    profile.pop('engine',None)
     profile.update(repo=repo,filename=filename,revision=revision,context=context,source=None,
                    label=repo.split('/')[-1].removesuffix('-GGUF')+f' - {context//1024}k (cuenta {profile["account"]})',
                    parameters={'draft_num_predict':0})

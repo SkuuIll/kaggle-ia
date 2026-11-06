@@ -28,7 +28,7 @@ def prepare(key=None):
     p=data['profiles'][key]
     name=p['model']
     URL='http://127.0.0.1:'+str(p.get('port',18134))
-    if p['source']:
+    if p.get('engine')!='exl3' and p['source']:
         exists=requests.post(URL+'/api/show',json={'model':p['source']},timeout=15)
         if not exists.ok:
             print('Descargando el modelo en Kaggle; la primera vez puede tardar varios minutos.',flush=True)
@@ -48,6 +48,13 @@ def prepare(key=None):
                         'parameters':parameters,'stream':False},timeout=120)
         r.raise_for_status()
     print('Comprobando generacion: '+p['label']+'...',flush=True)
+    if p.get('engine')=='exl3':
+        r=requests.post(URL+'/v1/chat/completions',json={'model':name,'messages':[{'role':'user','content':'Responde solamente MODELO_LISTO'}],
+                        'reasoning_effort':'none','max_tokens':64},timeout=(10,600))
+        r.raise_for_status()
+        if not r.json()['choices'][0]['message'].get('content'):
+            raise RuntimeError('EXL3 no devolvió texto visible.')
+        return key,p
     body={'model':name,'messages':[{'role':'user','content':'Responde solamente MODELO_LISTO'}],
           'stream':False,'keep_alive':-1,'options':{'num_predict':256}}
     if p['reasoning']: body['think']=False if p.get('effort')=='none' else p.get('effort',True)

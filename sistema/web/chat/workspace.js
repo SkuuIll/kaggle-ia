@@ -157,6 +157,7 @@ async function applyChatWorkflowPreset(presetKey){
 function toggleChatSettings(){
   const drawer=el('chat-settings-drawer');
   if(drawer.open){drawer.close();return;}
+  el('chat-reasoning-effort').value=localStorage.getItem('chat-reasoning-effort')||'';
   drawer.showModal();
   loadChatStorage();
 }
@@ -167,8 +168,9 @@ async function saveChatSettings(){
     const sys=el('chat-system-prompt').value.trim();
     const updated=await post('/api/chat/rename',{id:activeChatId,system_prompt:sys});
     if(chatState.conversation)chatState.conversation.system_prompt=updated.system_prompt;
+    localStorage.setItem('chat-reasoning-effort',el('chat-reasoning-effort').value);
     el('chat-settings-drawer').close();
-    toast('Instrucción de sistema guardada.');
+    toast('Ajustes del chat guardados.');
   }catch(e){toast(e.message,true);}
 }
 
@@ -600,6 +602,7 @@ async function sendChatMessage(){
       content,
       attachments:pendingAttachments.map(a=>a.id),
       temperature:Number(el('chat-temperature')?.value||0.2),
+      reasoning_effort:localStorage.getItem('chat-reasoning-effort')||undefined,
       max_tokens:Number(el('chat-max-tokens')?.value||4096)
     });
     if(chatDrafts.get(conversation)===draft)chatDrafts.delete(conversation);

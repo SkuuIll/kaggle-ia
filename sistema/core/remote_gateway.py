@@ -18,13 +18,22 @@ inference_guard = threading.Lock()
 class Gateway(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.0'
     def log_message(self, *args): pass
+    def send_object(self, status, data):
+        self.send_response(status)
+        self.send_header('Content-Type','application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
     def do_GET(self):
+        exl3=globals().get('config',{}).get('engine')=='exl3'
+        if exl3 and self.path=='/api/ps':
+            ready=globals().get('engine_ready',False)
+            return self.send_object(200,{'models':[{'name':config['model'],'context_length':config['context']}] if ready else []})
         if self.path == '/control/status':
             import shutil
             from pathlib import Path
             with lock:
                 data={'uptime_seconds':int(time.monotonic()-started_at),'idle_seconds':int(time.monotonic()-last_activity),'active_requests':active_requests}
-            data.update(capabilities=['session-v1','vision-v1'],**runtime_limits(session_started,last_activity,active_requests,time.monotonic(),idle_policy,maximum_policy+session_extension))
+            data.update(capabilities=['session-v1'] if exl3 else ['session-v1','vision-v1'],**runtime_limits(session_started,last_activity,active_requests,time.monotonic(),idle_policy,maximum_policy+session_extension))
             data['runtime']=globals().get('runtime_fingerprint',{})
             data['disk']={p:dict(zip(('total','used','free'),shutil.disk_usage(p))) for p in ('/','/kaggle/temp','/kaggle/working') if Path(p).exists()}
             self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers()
@@ -33,6 +42,8 @@ class Gateway(BaseHTTPRequestHandler):
     def do_DELETE(self): self.proxy()
     def do_POST(self):
         if self.path == '/control/vision':
+            if globals().get('config',{}).get('engine')=='exl3':
+                return self.send_object(400,{'error':'El perfil EXL3 admite texto. Usá un perfil Ollama para análisis visual.'})
             global last_activity,active_requests
             try:
                 length=int(self.headers.get('Content-Length','0'))
@@ -60,6 +71,9 @@ class Gateway(BaseHTTPRequestHandler):
         global last_activity, active_requests
         if not self.path.startswith(('/v1/', '/api/')):
             self.send_error(404); return
+        exl3=globals().get('config',{}).get('engine')=='exl3'
+        if exl3 and not globals().get('engine_ready',False):
+            return self.send_object(503,{'error':'El motor está cargando.'})
         activity=self.command=='POST' and self.path.split('?')[0] in {'/api/chat','/api/generate','/api/embed','/api/embeddings','/v1/chat/completions','/v1/completions','/v1/embeddings','/v1/responses'}
         if activity:
             with lock:
@@ -71,7 +85,11 @@ class Gateway(BaseHTTPRequestHandler):
                 try:
                     payload = json.loads(body)
                     eff = payload.get('reasoning_effort')
-                    if eff is not None and eff not in ('low', 'medium', 'xhigh'):
+                    if exl3 and eff=='none':
+                        payload.pop('reasoning_effort')
+                        payload['enable_thinking']=False
+                        body=json.dumps(payload).encode('utf-8')
+                    elif eff is not None and eff not in ('low', 'medium', 'xhigh'):
                         payload['reasoning_effort'] = 'low' if eff == 'none' else 'xhigh' if eff == 'high' else 'medium'
                         body = json.dumps(payload).encode('utf-8')
                 except Exception:

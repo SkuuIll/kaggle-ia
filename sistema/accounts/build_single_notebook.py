@@ -9,7 +9,8 @@ from cpu_cache import source_for,CACHE_READER
 relay_config=settings()
 profile_key=sys.argv[1] if len(sys.argv)>1 else 'rapido'
 profile=json.loads((BASE/'model_profiles.json').read_text(encoding='utf8'))['profiles'][profile_key]
-cache=source_for(profile)
+exl3=profile.get('engine')=='exl3'
+cache=None if exl3 else source_for(profile)
 if cache is None:profile.pop('cache_source',None)
 port=profile.get('port',18134)
 key=(BASE/'.private/kaggle_relay').read_text()
@@ -38,15 +39,22 @@ runtime_fingerprint={'python':sys.version.split()[0],'gpu':gpu_probe.stdout.stri
 ''')
 code("report_phase('install')\n"+'''print('Instalando servidor privado de codigo...',flush=True)
 import shutil,importlib.util
-needed=[package for command,package in [('zstd','zstd'),('lspci','pciutils'),('lshw','lshw'),('ssh','openssh-client')] if not shutil.which(command)]
+needed=[package for command,package in [('zstd','zstd'),('lspci','pciutils'),('lshw','lshw'),('ssh','openssh-client'),('git','git')] if not shutil.which(command)]
 if needed:
     subprocess.run(['apt-get','update','-qq'],check=True)
     subprocess.run(['apt-get','install','-y','-qq',*needed],check=True)
 missing=[name for name in ('huggingface_hub','requests') if importlib.util.find_spec(name) is None]
 if missing:subprocess.run([sys.executable,'-m','pip','install','-q',*missing],check=True)
-subprocess.run('curl -fsSL https://ollama.com/install.sh | sh',shell=True,check=True,env={**os.environ,'OLLAMA_VERSION':'0.40.13'})
+'''+('' if exl3 else "subprocess.run('curl -fsSL https://ollama.com/install.sh | sh',shell=True,check=True,env={**os.environ,'OLLAMA_VERSION':'0.40.13'})\n"))
+if exl3:
+    code(f'config={profile!r}\n'+(BASE/'accounts/exl3_runtime.py').read_text(encoding='utf8')+'''
+runtime_fingerprint.update(engine='exl3', kv_cache_requested='Q4', weights_source='huggingface-download')
+ollama_log=open('/tmp/exl3.log','w')
+proc_ollama=start_exl3(config,ollama_log)
+engine_ready=False
 ''')
-code("report_phase('download')\n"+'''from huggingface_hub import hf_hub_download
+else:
+    code("report_phase('download')\n"+'''from huggingface_hub import hf_hub_download
 '''+f'config={profile!r}\n'+CACHE_READER+'''
 # Scratch storage: model weights are not copied into notebook outputs or /root.
 os.makedirs('/kaggle/temp/coder-weights',exist_ok=True)
@@ -60,7 +68,7 @@ else:
     runtime_fingerprint['weights_source']='huggingface-download'
 print('Pesos descargados.',flush=True)
 ''')
-code(r'''os.environ.update(OLLAMA_HOST='127.0.0.1:11434',OLLAMA_MODELS='/kaggle/temp/ollama_models',OLLAMA_NUM_PARALLEL='1',OLLAMA_FLASH_ATTENTION='1',OLLAMA_KV_CACHE_TYPE='q8_0',CUDA_VISIBLE_DEVICES='0,1')
+    code(r'''os.environ.update(OLLAMA_HOST='127.0.0.1:11434',OLLAMA_MODELS='/kaggle/temp/ollama_models',OLLAMA_NUM_PARALLEL='1',OLLAMA_FLASH_ATTENTION='1',OLLAMA_KV_CACHE_TYPE='q8_0',CUDA_VISIBLE_DEVICES='0,1')
 os.makedirs(os.environ['OLLAMA_MODELS'],exist_ok=True)
 ollama_log=open('/tmp/ollama.log','w')
 proc_ollama=subprocess.Popen(['ollama','serve'],stdout=ollama_log,stderr=ollama_log)
@@ -88,9 +96,24 @@ if proc_ssh.poll() is not None:raise RuntimeError('No se pudo iniciar el relay S
 print('RELAY_READY',flush=True)
 print('Cargando modelo en las T4...',flush=True)
 report_phase('warm')
-r=requests.post('http://127.0.0.1:11434/api/chat',json={'model':config['model'],'messages':[{'role':'user','content':'Responde LISTO'}],'think':False,'stream':False,'keep_alive':-1,'options':{'num_predict':64}},timeout=600)
-r.raise_for_status()
-if not r.json().get('message',{}).get('content'):raise RuntimeError('No se confirmo una respuesta del modelo')
+if config.get('engine')=='exl3':
+    for _ in range(240):
+        if proc_ollama.poll() is not None:
+            raise RuntimeError(Path('/tmp/exl3.log').read_text(errors='replace')[-6000:])
+        try:
+            if requests.get('http://127.0.0.1:11434/v1/models',timeout=2).ok:break
+        except requests.RequestException:pass
+        time.sleep(2)
+    else:raise RuntimeError('TabbyAPI no inicio')
+    r=requests.post('http://127.0.0.1:11434/v1/chat/completions',json={'model':config['model'],'messages':[{'role':'user','content':'Responde LISTO'}],'enable_thinking':False,'max_tokens':64},timeout=600)
+    r.raise_for_status()
+    visible=r.json()['choices'][0]['message'].get('content')
+else:
+    r=requests.post('http://127.0.0.1:11434/api/chat',json={'model':config['model'],'messages':[{'role':'user','content':'Responde LISTO'}],'think':False,'stream':False,'keep_alive':-1,'options':{'num_predict':64}},timeout=600)
+    r.raise_for_status()
+    visible=r.json().get('message',{}).get('content')
+if not visible:raise RuntimeError('No se confirmo una respuesta del modelo')
+engine_ready=True
 print('MODEL_READY',flush=True)
 runtime_fingerprint['ready_elapsed_seconds']=round(time.monotonic()-_allocation_started,1)
 report_phase('ready')
@@ -99,7 +122,7 @@ code((BASE/'accounts/lifecycle.py').read_text(encoding='utf8')+'''
 session_started=_allocation_started
 idle_policy=config.get('idle_minutes',15)
 maximum_policy=config.get('max_session_minutes',120)
-with lock:last_activity=session_started
+with lock:last_activity=time.monotonic()
 try:
     while not stop_event.wait(5):
         if proc_ollama.poll() is not None:raise RuntimeError('Ollama termino')

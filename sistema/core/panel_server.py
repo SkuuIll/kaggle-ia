@@ -514,7 +514,11 @@ def run():
                     profiles=catalog()['profiles']
                     if key not in profiles:raise ValueError('Cuenta invalida.')
                     if key!=conv['account']:app.chat.update_conversation(cid,account=key)
-                    self.send_json(200,app.chat.start_send(cid,data.get('content',''),data.get('attachments',[]),profiles[key],data.get('temperature'),data.get('max_tokens')));return
+                    profile=profiles[key]
+                    effort=data.get('reasoning_effort')
+                    if effort in ('none','low','medium','xhigh'):
+                        profile={**profile,'effort':effort}
+                    self.send_json(200,app.chat.start_send(cid,data.get('content',''),data.get('attachments',[]),profile,data.get('temperature'),data.get('max_tokens')));return
                 if self.path=='/api/chat/cancel':
                     self.send_json(200,app.chat.cancel_request(data.get('request_id','')));return
                 if self.path=='/api/chat/export':
