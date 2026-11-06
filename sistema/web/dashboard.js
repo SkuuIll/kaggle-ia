@@ -232,6 +232,7 @@ function render(){
   if(clientConfig&&clientConfig.profile_key!==el('client-account').value)clearClientConfig();
   renderLaunchConsole();
   loadModel();loadTimers();renderJob();renderDashboard();renderAccounts();renderHistory();renderConnection();renderChatHeaderStatus();
+  if(page==='chat')renderChatList();
   el('installation-mode').textContent=latest.server_mode==='vps'?'Servidor en la VPS. Los clientes usan HTTPS; Kaggle se conecta al relay por SSH.':'Controlador local en esta PC.';
   el('open-paseo').hidden=latest.server_mode==='vps';
   document.querySelectorAll('.operation').forEach(b=>b.disabled=(busy()&&!b.dataset.stop)||b.dataset.unavailable==='true');
