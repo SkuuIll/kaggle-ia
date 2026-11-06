@@ -276,3 +276,65 @@ td .quota-renewal { margin-top: 7px; }
 .token-day-bar i + i { background: #8497b6; }
 .token-day-total { text-align: end; font-variant-numeric: tabular-nums; }
 .legend i.out { background: #8497b6; }
+
+/* Chat has two working columns. The app menu is available on demand. */
+@media (min-width: 901px) {
+  body[data-current-page="chat"] .layout { margin-left: 0; }
+  body[data-current-page="chat"] .sidebar:not(.mobile-open) { visibility: hidden; }
+  body[data-current-page="chat"] #mobile-menu-btn { display: inline-flex !important; }
+  body[data-current-page="chat"] .sidebar .sidebar-mobile-head { display: flex !important; }
+  body[data-current-page="chat"] .sidebar .sidebar-close-btn { display: inline-flex !important; }
+  body[data-current-page="chat"] .mobile-nav-backdrop.open { display: block !important; }
+  .chat-workspace { grid-template-columns: clamp(228px, 23vw, 288px) minmax(0, 1fr); }
+}
+
+.chat-history-heading { margin: 0 0 10px; font-size: 15px; font-weight: 650; }
+.chat-history-empty { margin: 18px 10px; color: var(--muted); font-size: 13px; }
+.chat-workspace .chat-conv-item { align-items: center; padding-right: 3px; border-color: transparent; }
+.chat-workspace .chat-conv-item.active { background: #202b3c; border-color: #3b5273; }
+.chat-workspace .chat-conv-open { align-items: flex-start; gap: 8px; padding: 9px 6px 9px 9px; }
+.chat-workspace .chat-conv-open > .icon { margin-top: 2px; color: var(--console-accent); }
+.chat-workspace .chat-conv-meta { min-width: 0; flex: 1; }
+.chat-workspace .chat-conv-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-workspace .chat-conv-sub { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; margin-top: 3px; font-size: 12px; }
+.chat-workspace .chat-conv-del { opacity: 1; border-color: transparent; background: transparent; }
+@media (max-width: 900px) {
+  .chat-history-heading { display: none; }
+  .chat-workspace .chat-conv-del { min-width: 44px; min-height: 44px; }
+}
+
+.badge:is(.on,.off,.starting,.stopping) { gap: 6px; }
+.badge:is(.on,.off,.starting,.stopping)::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+.badge.on, .badge.starting { color: var(--good); background: #17312a; border-color: #356450; }
+.badge.off, .badge.stopping { color: var(--bad); background: #341e25; border-color: #76434d; }
+@keyframes gpu-state-pulse { 50% { box-shadow: 0 0 0 4px currentColor; opacity: .5; } }
+@media (prefers-reduced-motion: no-preference) {
+  body .badge:is(.starting,.stopping)::before { animation: gpu-state-pulse 1.6s ease-in-out 3 !important; }
+}
+
+@media (max-width: 760px) {
+  .accounts-table, .accounts-table tbody { display: block; width: 100%; min-width: 0; }
+  .accounts-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .accounts-table tbody { display: grid; gap: 12px; }
+  .accounts-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface-2);
+  }
+  .accounts-table td { display: block; padding: 0; border: 0; min-width: 0; overflow-wrap: anywhere; }
+  .accounts-table td:nth-child(n+3), .accounts-table td[colspan] { grid-column: 1 / -1; }
+  .accounts-table .table-model { white-space: normal; max-width: none; }
+  .accounts-table .row-actions { flex-wrap: wrap; justify-content: flex-start; }
+  .accounts-table .row-actions button { min-width: 44px; min-height: 44px; }
+}

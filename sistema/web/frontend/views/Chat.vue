@@ -31,6 +31,7 @@
               <i data-icon="x"></i>
             </button>
           </div>
+          <h2 class="chat-history-heading">Conversaciones</h2>
           <button class="chat-new-chat-btn" onclick="createChatConversation()">
             <i data-icon="plus"></i><span>Nueva conversación</span>
           </button>

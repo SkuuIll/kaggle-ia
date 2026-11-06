@@ -45,10 +45,18 @@ function renderChatList(){
   const list=chatConversations.filter(c=>c.title.toLowerCase().includes(q));
   html('chat-list',list.length?list.map(c=>{
     const acc=account(c.account);
-    const accLabel=acc?name(acc):c.account;
-    const dateStr=new Date(c.updated_at*1000).toLocaleDateString('es-AR',{day:'2-digit',month:'short'});
-    return `<div class="chat-conv-item ${c.id===activeChatId?'active':''}"><button type="button" class="chat-conv-open" ${c.id===activeChatId?'aria-current="true"':''} onclick="selectChatConversation('${esc(c.id)}')"><span class="chat-conv-meta"><span class="chat-conv-title">${esc(c.title)}</span><span class="chat-conv-sub"><span>${esc(accLabel)}</span>·<span>${c.message_count||0} msj</span>·<span>${dateStr}</span></span></span></button><button type="button" class="chat-conv-del" title="Archivar" aria-label="Archivar ${esc(c.title)}" onclick="deleteChatConversation('${esc(c.id)}')">${icon('trash')}</button></div>`;
-  }).join(''):'<div class="empty" style="padding:18px 8px">No hay conversaciones que coincidan.</div>');
+    const accLabel=acc?'Cuenta '+acc.account:'Cuenta sin configurar';
+    const date=new Date(c.updated_at*1000);
+    const dateLabel=date.toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+    const current=c.id===activeChatId;
+    return `<div role="listitem" class="chat-conv-item ${current?'active':''}">
+      <button type="button" class="chat-conv-open" ${current?'aria-current="true"':''} onclick="selectChatConversation('${esc(c.id)}')">
+        ${icon('chat')}<span class="chat-conv-meta"><span class="chat-conv-title" title="${esc(c.title)}">${esc(c.title)}</span>
+        <span class="chat-conv-sub"><span>${esc(accLabel)}</span><span>${esc(dateLabel)}</span></span></span>
+      </button>
+      <button type="button" class="chat-conv-del" title="Archivar" aria-label="Archivar ${esc(c.title)}" onclick="deleteChatConversation('${esc(c.id)}')">${icon('archive')}</button>
+    </div>`;
+  }).join(''):`<p class="chat-history-empty">${q?'No hay chats que coincidan.':'Tus conversaciones van a aparecer acá.'}</p>`);
 }
 
 async function createChatConversation(customTitle='',customPrompt=''){

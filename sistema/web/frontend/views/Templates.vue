@@ -5,16 +5,9 @@
         <div>
           <h2>Tu catálogo de IA y Herramientas</h2>
           <p>
-            Modelo único oficial Qwen3.8 27B RVN Heretic · Multilingual MTP (128k), paquetes locales y flujos
-            de trabajo.
+            Modelos probados, herramientas y flujos de trabajo para tus cuentas.
           </p>
         </div>
-        <a
-          href="https://huggingface.co/0bserverx/Qwen3.8-27B-Heretic-Abliterated-Uncensored-GGUF"
-          target="_blank"
-          rel="noreferrer"
-          >Repositorio 0bserverx <i data-icon="external"></i
-        ></a>
       </div>
       <div class="template-toolbar">
         <div class="field">
@@ -26,7 +19,7 @@
           ><select id="template-filter" onchange="renderTemplates()">
             <option value="all">Todo el catálogo</option>
             <option value="models">
-              <i data-icon="check"></i> Modelo IA (Qwen3.8 27B RVN Heretic · 128k)
+              Modelos de IA
             </option>
             <option value="tools">Herramientas y librerías</option>
             <option value="workflows">Instrucciones de trabajo</option>

@@ -2,6 +2,13 @@
 import copy,re
 
 MODELS=[
+ {'id':'qwen36-heretic-compact','name':'Qwen 3.6 35B-A3B Heretic · APEX I-Compact','category':'MoE · llama.cpp + MTP',
+  'repo':'SC117/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-GGUF',
+  'filename':'Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-APEX-I-Compact.gguf',
+  'revision':'313e55f61a045dd18ac023d28fe845ee35988a5d','size_bytes':17016624544,
+  'context':262144,'native_context':262144,'license':'Apache-2.0','engine':'llama',
+  'parameters':{'draft_num_predict':2},'tested':True,'effort':'none','arch':'35B MoE · 3B activos',
+  'description':'Variante abliterada probada en dos T4. Ventana de 262.144 tokens. En la prueba corta dio 66,5 TPS en código y 69,2 en prosa.'},
  {'id':'thinkingcap-nemotron','name':'ThinkingCap Nemotron 3.5 Lightning · Abliterated','category':'MoE · llama.cpp',
   'repo':'mradermacher/ThinkingCap-Nemotron-3.5-Lightning-30B-A3B-abliterated-i1-GGUF',
   'filename':'ThinkingCap-Nemotron-3.5-Lightning-30B-A3B-abliterated.i1-IQ4_XS.gguf',

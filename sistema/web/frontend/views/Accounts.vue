@@ -15,17 +15,17 @@
         />
       </div>
       <div class="table-wrap" tabindex="0" role="region" aria-label="Cuentas conectadas">
-        <table>
-          <thead>
-            <tr>
-              <th>Cuenta</th>
-              <th>Estado</th>
-              <th>Modelo</th>
-              <th>Cuota de GPU</th>
-              <th style="text-align: right">Acciones</th>
+        <table class="accounts-table" role="table">
+          <thead role="rowgroup">
+            <tr role="row">
+              <th role="columnheader">Cuenta</th>
+              <th role="columnheader">Estado</th>
+              <th role="columnheader">Modelo</th>
+              <th role="columnheader">Cuota de GPU</th>
+              <th role="columnheader" style="text-align: right">Acciones</th>
             </tr>
           </thead>
-          <tbody id="account-rows"></tbody>
+          <tbody id="account-rows" role="rowgroup"></tbody>
         </table>
       </div>
       <div id="accounts-empty" class="empty" hidden>
