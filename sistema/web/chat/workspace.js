@@ -9,7 +9,38 @@ const WORKFLOW_PRESETS={
   'revision':'Sos un revisor de seguridad y calidad de código. Buscá errores de borde, fugas de credenciales, problemas de concurrencia y oportunidades de mejora concretas.'
 };
 
+function chatPreference(key,value){
+  try{
+    if(value===undefined)return localStorage.getItem('kaggle-chat:'+key);
+    localStorage.setItem('kaggle-chat:'+key,value);
+  }catch{}
+}
+
 const chatDrafts=new Map();
+try{
+  for(const [id,text] of JSON.parse(localStorage.getItem('kaggle-chat:drafts')||'[]')){
+    if(typeof id==='string'&&typeof text==='string')chatDrafts.set(id,text.slice(0,32000));
+  }
+}catch{}
+
+function storeChatDraft(id,text){
+  const key=id||'new';
+  chatDrafts.delete(key);
+  if(text)chatDrafts.set(key,text.slice(0,32000));
+  if(chatDrafts.size>20)chatDrafts.delete(chatDrafts.keys().next().value);
+  try{
+    const persisted=new Map(JSON.parse(localStorage.getItem('kaggle-chat:drafts')||'[]'));
+    persisted.delete(key);
+    if(text)persisted.set(key,chatDrafts.get(key));
+    if(persisted.size>20)persisted.delete(persisted.keys().next().value);
+    localStorage.setItem('kaggle-chat:drafts',JSON.stringify([...persisted]));
+  }catch{}
+}
+
+function editChatDraft(input){
+  storeChatDraft(activeChatId,input.value);
+  autoGrowChatInput(input);
+}
 let creatingChat=false,uploadingChatFiles=false,sendingChatMessage=false,chatSelection=0,chatRequestConversation=null;
 let chatConversations=[],activeChatId=null,chatState={conversation:null,messages:[]},pendingAttachments=[],activeRequestId=null,chatPollTimer=null,codeBlocksStore=[];
 
@@ -28,8 +59,13 @@ async function loadChatConversations(){
     el('chat-count').textContent=chatConversations.length;
     renderChatList();
     if(!activeChatId&&chatConversations.length){
-      await selectChatConversation(chatConversations[0].id);
+      const last=chatConversations.find(chat=>chat.id===chatPreference('conversation'));
+      await selectChatConversation((last||chatConversations[0]).id);
     }else{
+      if(!activeChatId){
+        el('chat-input').value=chatDrafts.get('new')||'';
+        autoGrowChatInput(el('chat-input'));
+      }
       renderChatHeaderStatus();
       renderChatMessages();
     }
@@ -52,9 +88,13 @@ function renderChatList(){
     return `<div role="listitem" class="chat-conv-item ${current?'active':''}">
       <button type="button" class="chat-conv-open" ${current?'aria-current="true"':''} onclick="selectChatConversation('${esc(c.id)}')">
         ${icon('chat')}<span class="chat-conv-meta"><span class="chat-conv-title" title="${esc(c.title)}">${esc(c.title)}</span>
-        <span class="chat-conv-sub"><span>${esc(accLabel)}</span><span>${esc(dateLabel)}</span></span></span>
+        ${c.preview&&!/^\s*<think>/i.test(c.preview)?`<span class="chat-conv-preview">${esc(c.preview)}</span>`:''}<span class="chat-conv-sub"><span>${esc(accLabel)}</span><span>${esc(dateLabel)}</span></span></span>
       </button>
-      <button type="button" class="chat-conv-del" title="Archivar" aria-label="Archivar ${esc(c.title)}" onclick="deleteChatConversation('${esc(c.id)}')">${icon('archive')}</button>
+      <details class="chat-history-menu">
+        <summary aria-label="Opciones de ${esc(c.title)}">⋯</summary>
+        <div><button type="button" onclick="renameChatConversation('${esc(c.id)}')">Renombrar</button>
+        <button type="button" class="danger" onclick="deleteChatConversation('${esc(c.id)}')">Archivar</button></div>
+      </details>
     </div>`;
   }).join(''):`<p class="chat-history-empty">${q?'No hay chats que coincidan.':'Tus conversaciones van a aparecer acá.'}</p>`);
 }
@@ -69,6 +109,10 @@ async function createChatConversation(customTitle='',customPrompt=''){
   const sysPrompt=customPrompt||(WORKFLOW_PRESETS[presetKey]||'');
   try{
     const created=await post('/api/chat/conversations',{account:chosenKey,title:customTitle,system_prompt:sysPrompt});
+    if(!activeChatId){
+      storeChatDraft(created.id,el('chat-input').value);
+      storeChatDraft(null,'');
+    }
     await selectChatConversation(created.id);
     await loadChatConversations();
   }catch(e){toast(e.message,true);}
@@ -85,12 +129,14 @@ async function selectChatConversation(id){
     const input=el('chat-input');
     const switched=activeChatId!==id;
     if(switched){
-      if(activeChatId)chatDrafts.set(activeChatId,input.value);
+      if(activeChatId)storeChatDraft(activeChatId,input.value);
       input.value=chatDrafts.get(id)||'';
       autoGrowChatInput(input);
     }
     chatState=conversation;
     activeChatId=chatState.conversation.id;
+    chatPreference('conversation',activeChatId);
+    chatPreference('account',chatState.conversation.account);
     setChatSidebar(false);
     pendingAttachments=chatState.pending_attachments||[];renderPendingFiles();
     if(el('chat-account')&&chatState.conversation.account)el('chat-account').value=chatState.conversation.account;
@@ -139,6 +185,8 @@ function renderChatHeaderStatus(){
   el('chat-server-account').title=accountName;
   const stopping=operation?.status==='running'&&['stop','stop_all'].includes(operation.action);
   el('chat-active-subtitle').textContent=acc?uiText(acc.label)+' · '+fmt(acc.context)+' de contexto':'Seleccioná una cuenta para empezar.';
+  const inlineStart=el('chat-compose-start');
+  inlineStart.hidden=!acc?.configured||active(acc)||unknown(acc)||busy();
   startBtn.hidden=!acc?.configured||active(acc);
   startBtn.disabled=busy()||!acc||unknown(acc);
   stopBtn.hidden=!acc?.configured||(!active(acc)&&!unknown(acc));
@@ -151,9 +199,10 @@ function renderChatHeaderStatus(){
 async function changeChatAccount(newKey){
   const conversation=chatState.conversation;
   if(!newKey)return;
-  if(!conversation){renderChatHeaderStatus();return;}
+  if(!conversation){chatPreference('account',newKey);renderChatHeaderStatus();return;}
   try{
     const updated=await post('/api/chat/rename',{id:conversation.id,account:newKey});
+    chatPreference('account',newKey);
     if(activeChatId===conversation.id)chatState.conversation.account=updated.account;
     renderChatHeaderStatus();
     await loadChatConversations();
@@ -203,14 +252,15 @@ async function saveChatSettings(){
   }catch(e){toast(e.message,true);}
 }
 
-async function renameChatConversation(){
-  if(!activeChatId||!chatState.conversation)return;
-  const nextTitle=prompt('Nuevo título para la conversación:',chatState.conversation.title);
-  if(!nextTitle||!nextTitle.trim())return;
+async function renameChatConversation(id=activeChatId){
+  const conversation=chatConversations.find(c=>c.id===id)|| (id===activeChatId?chatState.conversation:null);
+  if(!conversation)return;
+  const nextTitle=prompt('Nuevo título para la conversación:',conversation.title)?.trim();
+  if(!nextTitle)return;
   try{
-    const updated=await post('/api/chat/rename',{id:activeChatId,title:nextTitle.trim()});
-    chatState.conversation.title=updated.title;
-    renderChatHeaderStatus();
+    const updated=await post('/api/chat/rename',{id,title:nextTitle});
+    if(activeChatId===id)chatState.conversation.title=updated.title;
+    document.querySelectorAll('.chat-history-menu[open]').forEach(menu=>menu.open=false);
     await loadChatConversations();
   }catch(e){toast(e.message,true);}
 }
@@ -221,7 +271,9 @@ async function deleteChatConversation(targetId=null){
   if(!await ask('Archivar conversación','La conversación se quitará de la lista activa del Chat Web.','Archivar',true))return;
   try{
     await post('/api/chat/delete',{id:cid});
-    if(activeChatId===cid){activeChatId=null;chatState={conversation:null,messages:[]};}
+    document.querySelectorAll('.chat-history-menu[open]').forEach(menu=>menu.open=false);
+    storeChatDraft(cid,'');
+    if(activeChatId===cid){activeChatId=null;chatState={conversation:null,messages:[]};el('chat-input').value='';}
     await loadChatConversations();
     toast('Conversación archivada.');
   }catch(e){toast(e.message,true);}
@@ -576,7 +628,7 @@ function fillChatStarter(text){
   const input=el('chat-input');
   if(!input)return;
   input.value=text;
-  autoGrowChatInput(input);
+  editChatDraft(input);
   input.focus();
 }
 
@@ -652,11 +704,11 @@ async function sendChatMessage(){
       reasoning_effort:localStorage.getItem('chat-reasoning-effort')||undefined,
       max_tokens:Number(el('chat-max-tokens')?.value||4096)
     });
-    if(chatDrafts.get(conversation)===draft)chatDrafts.delete(conversation);
+    if(chatDrafts.get(conversation)===draft)storeChatDraft(conversation,'');
     activeRequestId=res.request_id;
     chatRequestConversation=conversation;
     if(activeChatId===conversation){
-      if(input.value===draft)input.value='';
+      if(input.value===draft){input.value='';storeChatDraft(conversation,'');}
       autoGrowChatInput(input);
       pendingAttachments=[];
       renderPendingFiles();

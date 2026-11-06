@@ -214,7 +214,7 @@ class ChatStore:
 
     def list_conversations(self):
         with self._conn() as db:
-            rows=db.execute('SELECT c.id, c.title, c.account, c.system_prompt, c.created_at, c.updated_at, (SELECT COUNT(*) FROM messages m WHERE m.conversation_id=c.id) AS message_count FROM conversations c WHERE c.archived=0 ORDER BY c.updated_at DESC LIMIT 100').fetchall()
+            rows=db.execute("SELECT c.id, c.title, c.account, c.system_prompt, c.created_at, c.updated_at, (SELECT COUNT(*) FROM messages m WHERE m.conversation_id=c.id) AS message_count, (SELECT substr(m.content,1,160) FROM messages m WHERE m.conversation_id=c.id AND m.content<>'' ORDER BY m.created_at DESC LIMIT 1) AS preview FROM conversations c WHERE c.archived=0 ORDER BY c.updated_at DESC LIMIT 100").fetchall()
         return [dict(r) for r in rows]
 
     def create_conversation(self,account,title='',system_prompt=''):

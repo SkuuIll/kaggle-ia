@@ -338,3 +338,25 @@ td .quota-renewal { margin-top: 7px; }
   .accounts-table .row-actions { flex-wrap: wrap; justify-content: flex-start; }
   .accounts-table .row-actions button { min-width: 44px; min-height: 44px; }
 }
+
+.chat-conv-preview { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
+.chat-history-menu, .account-more { flex: 0 0 auto; }
+.chat-history-menu > summary, .account-more > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 7px 9px;
+  border-radius: 7px;
+  color: var(--text-soft);
+}
+.chat-history-menu > summary { min-width: 32px; text-align: center; }
+.chat-history-menu > summary::-webkit-details-marker, .account-more > summary::-webkit-details-marker { display: none; }
+.chat-history-menu[open] > summary, .account-more[open] > summary { background: var(--surface-3); }
+.chat-history-menu > div, .account-more > div { display: grid; gap: 4px; }
+.chat-history-menu button, .account-more button { justify-content: flex-start; }
+.chat-workspace .chat-conv-item:has(.chat-history-menu[open]) { flex-wrap: wrap; }
+.chat-history-menu[open] { width: 100%; padding: 0 5px 5px; }
+.account-more[open] { flex-basis: 100%; }
+.chat-composer-status { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.chat-composer-status:has(> :not([hidden])) { padding: 4px; }
+.chat-composer-status #chat-connection-status { flex: 1 1 160px; margin: 0; }
+.chat-composer-status button { min-height: 44px; }

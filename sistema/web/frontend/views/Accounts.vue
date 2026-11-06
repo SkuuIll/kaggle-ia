@@ -20,8 +20,8 @@
             <tr role="row">
               <th role="columnheader">Cuenta</th>
               <th role="columnheader">Estado</th>
-              <th role="columnheader">Modelo</th>
               <th role="columnheader">Cuota de GPU</th>
+              <th role="columnheader">Modelo</th>
               <th role="columnheader" style="text-align: right">Acciones</th>
             </tr>
           </thead>

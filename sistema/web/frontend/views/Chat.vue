@@ -258,7 +258,12 @@
                 "
               />
             </div>
-            <p id="chat-connection-status" class="hint" role="status"></p>
+            <div class="chat-composer-status">
+              <p id="chat-connection-status" class="hint" role="status"></p>
+              <button id="chat-compose-start" class="primary" type="button" onclick="startChatAccount()" hidden>
+                <i data-icon="play"></i> Encender y seguir en este chat
+              </button>
+            </div>
             <p id="chat-upload-status" class="hint" role="status" hidden></p>
             <div id="chat-pending-files" class="chat-pending-files" hidden></div>
             <textarea
@@ -268,7 +273,7 @@
               rows="1"
               placeholder="Escribí un mensaje…"
               onkeydown="handleChatKey(event)"
-              oninput="autoGrowChatInput(this)"
+              oninput="editChatDraft(this)"
             ></textarea>
             <div class="chat-composer-bottom">
               <div class="chat-composer-tools">

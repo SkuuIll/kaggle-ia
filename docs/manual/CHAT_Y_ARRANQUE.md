@@ -43,6 +43,12 @@ Pulsá **Vista previa** en la tarjeta del archivo para abrir el visor sin salir 
 
 El endpoint compartido `https://ia.example.com/inference/pool/v1` dirige las solicitudes a una cuenta cuyo relay ya responde. El historial del Chat IA se guarda en la VPS y se puede consultar con la GPU apagada. Cuando no hay un relay disponible, iniciá una cuenta desde el panel. La rotación automática y el precalentamiento aparecen en notas históricas como diseño, pero el servicio actual no ejecuta ese orquestador.
 
+## Retomar un chat
+
+El navegador recuerda la última conversación, la cuenta elegida y hasta 20 borradores de texto en este dispositivo. El historial del servidor conserva los mensajes enviados. En el menú de cada conversación podés renombrarla o archivarla.
+
+Si la cuenta está apagada, usá **Encender y seguir en este chat** junto al editor. Podés escribir durante la espera. En Actividad, el panel distingue la preparación, la descarga y la carga cuando el notebook informa esas etapas. **GPU lista** requiere la confirmación del controlador.
+
 ## Cuota de GPU
 
 Inicio y Cuentas muestran las horas y la fecha de renovación que informa Kaggle. El contador se actualiza en el navegador y muestra la fecha en la zona horaria del dispositivo. Al llegar la hora, el panel espera una nueva lectura de Kaggle antes de mostrar la siguiente renovación. Si falta la fecha o la cuota, se indica que el dato sigue sin confirmar.

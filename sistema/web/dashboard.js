@@ -184,7 +184,7 @@ async function act(action,key=null,extra={},showActivity=false){
 }
 async function refresh(){if(refreshBusy)return;refreshBusy=true;try{const r=await fetch('/api/state',{cache:'no-store'});if(r.status===401){location.replace('/login?expired=1');return;}if(!r.ok)throw Error('No se pudo consultar el estado.');latest=await r.json();render();el('server-dot').className='dot';el('server-status').textContent=latest.server_mode==='vps'?'Panel en la VPS':'Panel local';}catch(e){el('server-dot').className='dot off';el('server-status').textContent='Conexión interrumpida';el('banner').className='banner error';el('banner-text').textContent='No se pudo actualizar el panel. El estado de Kaggle sigue sin confirmar; revisá tu conexión.';if(!el('floating-job').hidden)setJobText('floating-detail','Conexión interrumpida. Se reintentará la consulta.');}finally{refreshBusy=false;}}
 async function refreshNow(){try{await post('/api/refresh',{});toast('Solicitamos una nueva consulta a Kaggle.');await refresh();}catch(e){toast(e.message,true);}}
-function select(id,accounts,all=false){const n=el(id);if(!n)return;const previous=n.value;const options=(id==='chat-account'&&!accounts.length?'<option value="">Sin cuentas</option>':'')+(all?'<option value="all">Todas las cuentas</option>':'')+accounts.map(a=>`<option value="${esc(a.key)}">${esc(id==='chat-account'?'Cuenta '+a.account+' · '+name(a):name(a)+' · '+(a.label.split(' ')[0]||'IA'))}</option>`).join('');if(n.innerHTML!==options){n.innerHTML=options;if([...n.options].some(o=>o.value===previous))n.value=previous;}}
+function select(id,accounts,all=false){const n=el(id);if(!n)return;const previous=n.value||(id==='chat-account'?chatPreference('account'):'');const options=(id==='chat-account'&&!accounts.length?'<option value="">Sin cuentas</option>':'')+(all?'<option value="all">Todas las cuentas</option>':'')+accounts.map(a=>`<option value="${esc(a.key)}">${esc(id==='chat-account'?'Cuenta '+a.account+' · '+name(a):name(a)+' · '+(a.label.split(' ')[0]||'IA'))}</option>`).join('');if(n.innerHTML!==options){n.innerHTML=options;if([...n.options].some(o=>o.value===previous))n.value=previous;}}
 
 function modelTelemetry(a){
   const t=templateCatalog?.models?.find(m=>m.id===a.template_id||m.filename===a.filename);
@@ -309,7 +309,7 @@ function renderDashboard(){
 }
 
 function openChatForAccount(key){
-  if(key&&el('chat-account'))el('chat-account').value=key;
+  if(key&&el('chat-account')){el('chat-account').value=key;chatPreference('account',key);}
   navigate('chat');
   if(activeChatId&&chatState.conversation&&chatState.conversation.account!==key){
     changeChatAccount(key);
@@ -359,9 +359,39 @@ function renderChart(accounts){
   html('usage-chart',chart);
   el('chart-note').textContent=requests?`${fmt(requests)} solicitudes registradas en el período.`:'';
 }
-function renderAccounts(){if(!latest)return;const search=el('account-search').value.toLowerCase(),configured=latest.accounts.filter(a=>a.configured),accounts=configured.filter(a=>(name(a)+' '+a.username+' '+a.label).toLowerCase().includes(search));el('accounts-empty').hidden=configured.length>0;html('account-rows',accounts.map(a=>{const tm=modelTelemetry(a);return `<tr role="row"><td role="cell"><b>${esc(name(a))}</b><small>@${esc(a.username||'sin usuario')} · Conexión ${a.account}</small></td><td role="cell">${badge(a)}</td><td role="cell"><div class="table-model" title="${esc(uiText(a.label))}">${esc(uiText(a.label))}</div><small>${icon('activity')} ${esc(tm.tps)} · ${fmt(a.context)} tokens ctx</small></td><td role="cell"><b>${hours(a.quota?.available_seconds)}</b><small>${Number.isFinite(a.quota?.available_seconds)?'Disponibles':'Sin confirmar'}</small>${quotaRenewal(a.quota)}</td><td role="cell"><div class="row-actions"><button class="icon-btn" title="Chatear con esta cuenta" onclick="openChatForAccount('${a.key}')">${icon('chat')}</button>${gpuControl(a)}<button class="icon-btn operation" aria-label="Actualizar API de ${esc(name(a))}" title="Actualizar API" onclick="openAccount('${a.key}')">${icon('shield')}</button><button class="icon-btn operation" aria-label="Renombrar ${esc(name(a))}" title="Cambiar nombre" onclick="renameAccount('${a.key}')">${icon('edit')}</button><button class="icon-btn danger operation" aria-label="Quitar ${esc(name(a))}" title="Quitar cuenta" onclick="removeAccount('${a.key}')">${icon('trash')}</button></div></td></tr>`;}).join('')||(configured.length?'<tr role="row"><td role="cell" colspan="5" class="empty">No hay cuentas que coincidan con la búsqueda.</td></tr>':''));}
+function renderAccounts(){
+  if(!latest)return;
+  const search=el('account-search').value.toLowerCase();
+  const configured=latest.accounts.filter(a=>a.configured);
+  const accounts=configured.filter(a=>(name(a)+' '+a.username+' '+a.label).toLowerCase().includes(search));
+  el('accounts-empty').hidden=configured.length>0;
+  html('account-rows',accounts.map(a=>{
+    const key=esc(a.key),label=esc(name(a));
+    return `<tr role="row">
+      <td role="cell"><b>${label}</b><small>Cuenta ${a.account}</small></td>
+      <td role="cell">${badge(a)}</td>
+      <td role="cell"><b>${Number.isFinite(a.quota?.available_seconds)?hours(a.quota.available_seconds)+' libres':'Horas sin confirmar'}</b>${quotaRenewal(a.quota)}</td>
+      <td role="cell"><div class="table-model">${esc(uiText(a.label))}</div><small>${fmt(a.context)} tokens de contexto</small></td>
+      <td role="cell"><div class="row-actions">
+        <button type="button" onclick="openChatForAccount('${key}')">${icon('chat')} Chat</button>
+        ${gpuControl(a)}
+        <details class="account-more"><summary aria-label="Más acciones para ${label}">Más</summary>
+          <div><button type="button" onclick="openAccount('${key}')">Actualizar API</button>
+          <button type="button" onclick="renameAccount('${key}')">Renombrar</button>
+          <button type="button" onclick="openModelsForAccount('${key}')">Cambiar modelo</button>
+          <button type="button" class="danger" onclick="removeAccount('${key}')">Quitar cuenta</button></div>
+        </details>
+      </div></td>
+    </tr>`;
+  }).join('')||(configured.length?'<tr role="row"><td role="cell" colspan="5" class="empty">No hay cuentas que coincidan con la búsqueda.</td></tr>':''));
+}
 function eventRows(events){return events.length?events.map(e=>`<div class="event"><span class="event-icon ${e.status==='error'?'bad':''}">${icon(e.status==='error'?'x':'check')}</span><div class="event-main">${esc(actions[e.action]||'Operación del panel')}<small>${e.profile?'Conexión '+(account(e.profile)?.account||'')+' · ':''}${e.status==='done'?'Completada':'No se completó; revisá el resultado'}${e.detail?' · '+esc(e.detail):''}</small></div><time datetime="${new Date(e.timestamp*1000).toISOString()}">${new Date(e.timestamp*1000).toLocaleString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</time></div>`).join(''):'<div class="empty"><b>Todavía no hay operaciones registradas.</b>Los inicios, apagados y cambios aparecerán acá.</div>';}
 function renderHistory(){if(!latest)return;const filter=el('history-filter').value,events=latest.history||[];html('recent-events',eventRows(events.slice(0,4)));const filtered=events.filter(e=>filter==='all'||e.status===filter);html('operation-history',filtered.length||filter==='all'?eventRows(filtered):'<div class="empty"><b>No hay operaciones con este resultado.</b>Podés cambiar el filtro para ver las demás.</div>');}
+function startupRuntime(job){
+  const runtime=account(job.key)?.runtime;
+  return job.action==='start'&&runtime?.timestamp>=job.started_at?runtime:null;
+}
+
 function describePower(job){
   const target=account(job.key);
   const label=job.action==='stop_all'?'Todas las cuentas':target?name(target):'GPU';
@@ -377,6 +407,12 @@ function describePower(job){
     loading:'El modelo está cargando. Esperando que responda.',
     confirming_stop:'Esperando la confirmación de Kaggle.',
   };
+  const runtime=startupRuntime(job);
+  if(runtime){
+    const elapsed=Math.max(0,Math.floor((Date.now()/1000-runtime.timestamp)/60));
+    const phase=runtime.phase==='ready'?'Verificando respuesta del modelo':runtime.label;
+    return [title,`${label} · ${phase} · ${elapsed?elapsed+' min':'menos de 1 min'} desde el informe`];
+  }
   return [title,label+' · '+(stages[job.stage]||(start?'Preparando la sesión en Kaggle.':'Solicitando la parada de la sesión.'))];
 }
 
@@ -390,10 +426,11 @@ function renderJobStages(job){
   node.hidden=!powerActions.has(job.action);
   if(node.hidden)return;
   const start=job.action==='start';
-  const stages=start?['Solicitud','Cola de Kaggle','Carga del modelo','GPU lista']:
+  const stages=start?['Solicitud','Cola de Kaggle','Preparación','Descarga','Carga','Verificación','GPU lista']:
     ['Solicitud','Verificación en Kaggle','Apagado confirmado'];
-  const stageIndex={queued:1,loading:2,confirming_stop:1};
-  const current=job.status==='done'?stages.length-1:stageIndex[job.stage]??0;
+  const stageIndex={queued:1,loading:4,confirming_stop:1};
+  const runtimeIndex={assigned:2,install:2,download:3,register:4,warm:4,ready:5};
+  const current=job.status==='done'?stages.length-1:runtimeIndex[startupRuntime(job)?.phase]??stageIndex[job.stage]??0;
   html('job-stages',stages.map((label,index)=>`<li ${index===current?'aria-current="step"':''}><span aria-hidden="true">${index+1}</span>${label}</li>`).join(''));
 }
 
