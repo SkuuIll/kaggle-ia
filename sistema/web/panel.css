@@ -2115,7 +2115,6 @@ body[data-current-page="dashboard"] main>.page-head,body[data-current-page="dash
 .layout .eyebrow{color:#843b24}
 .layout .launch-status button{min-height:44px}
 .layout .chart svg text{fill:#665849}
-.layout .chat-workspace .composer-btn-send:disabled{color:#573d31;background:#ead9cc;opacity:1}
 @media(max-width:900px){
   .sidebar:not(.mobile-open){visibility:hidden}
   .sidebar.mobile-open{visibility:visible;background:#252925}

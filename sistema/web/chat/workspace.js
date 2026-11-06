@@ -169,7 +169,7 @@ function renderChatHeaderStatus(){
     else if(acc.state==='RUNNING')status='Kaggle está preparando el modelo. Podés escribir mientras esperás.';
     else if(busy())status='Hay una operación en curso. Podés seguirla en Actividad.';
     else if(unknown(acc))status='El estado de Kaggle todavía no se confirmó. Revisá Actividad o ejecutá el diagnóstico.';
-    else status='Iniciá el servidor de esta cuenta para poder enviar el mensaje.';
+    else status='GPU apagada';
   }
   if(activeRequestId&&chatRequestConversation!==activeChatId)status='Hay una respuesta en curso en otra conversación.';
   const operation=powerSubmission||visibleJob();

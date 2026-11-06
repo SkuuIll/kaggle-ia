@@ -47,7 +47,7 @@ El endpoint compartido `https://ia.example.com/inference/pool/v1` dirige las sol
 
 El navegador recuerda la última conversación, la cuenta elegida y hasta 20 borradores de texto en este dispositivo. El historial del servidor conserva los mensajes enviados. En el menú de cada conversación podés renombrarla o archivarla.
 
-Si la cuenta está apagada, usá **Encender y seguir en este chat** junto al editor. Podés escribir durante la espera. En Actividad, el panel distingue la preparación, la descarga y la carga cuando el notebook informa esas etapas. **GPU lista** requiere la confirmación del controlador.
+Si la cuenta está apagada, usá **Encender** junto al editor. Podés escribir durante la espera. En Actividad, el panel distingue la preparación, la descarga y la carga cuando el notebook informa esas etapas. **GPU lista** requiere la confirmación del controlador.
 
 ## Cuota de GPU
 

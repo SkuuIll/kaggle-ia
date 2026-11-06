@@ -260,8 +260,8 @@
             </div>
             <div class="chat-composer-status">
               <p id="chat-connection-status" class="hint" role="status"></p>
-              <button id="chat-compose-start" class="primary" type="button" onclick="startChatAccount()" hidden>
-                <i data-icon="play"></i> Encender y seguir en este chat
+              <button id="chat-compose-start" class="quiet" type="button" onclick="startChatAccount()" hidden>
+                <i data-icon="play"></i> Encender
               </button>
             </div>
             <p id="chat-upload-status" class="hint" role="status" hidden></p>
@@ -284,7 +284,7 @@
                   aria-label="Adjuntar documento o código"
                   title="Adjuntar documento o código"
                 >
-                  <i data-icon="paperclip"></i><span>Archivo</span>
+                  <i data-icon="paperclip"></i>
                 </button>
                 <button
                   type="button"
@@ -293,7 +293,7 @@
                   aria-label="Adjuntar foto o imagen"
                   title="Adjuntar foto o imagen"
                 >
-                  <i data-icon="image"></i><span>Imagen</span>
+                  <i data-icon="image"></i>
                 </button>
                 <button
                   type="button"
@@ -302,7 +302,7 @@
                   aria-label="Adjuntar video o audio"
                   title="Adjuntar video o audio"
                 >
-                  <i data-icon="video"></i><span>Multimedia</span>
+                  <i data-icon="video"></i>
                 </button>
               </div>
               <div class="chat-composer-actions">
@@ -321,9 +321,10 @@
                   type="button"
                   class="primary composer-btn-send"
                   onclick="sendChatMessage()"
+                  aria-label="Enviar mensaje"
                   title="Enviar mensaje"
                 >
-                  <i data-icon="send"></i><span>Enviar</span>
+                  <i data-icon="send"></i>
                 </button>
               </div>
             </div>
