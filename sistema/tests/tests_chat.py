@@ -40,7 +40,7 @@ class FakeStreamResponse:
         self._chunks=chunks or []
     def __enter__(self):return self
     def __exit__(self,*args):pass
-    def iter_lines(self,decode_unicode=False):
+    def iter_lines(self,chunk_size=512,decode_unicode=False):
         for c in self._chunks:
             yield c.encode('utf-8')
 
@@ -73,7 +73,7 @@ class ChatEngineTests(unittest.TestCase):
             cid=store.create_conversation('rapido')['id']
             response=FakeStreamResponse(200,[
                 'data: {"choices":[{"delta":{"content":"Hola"}}]}',
-                'data: {"choices":[],"usage":{"completion_tokens":12}}',
+                'data: {"choices":[],"usage":{"completion_tokens":12,"completion_tokens_per_sec":42.5}}',
                 'data: [DONE]',
             ])
             with patch('chat_engine.requests.post',return_value=response) as post:
@@ -86,7 +86,8 @@ class ChatEngineTests(unittest.TestCase):
                 self.assertTrue(post.call_args.kwargs['json']['stream_options']['include_usage'])
             answer=ChatStore(Path(tmp)).get_conversation(cid)['messages'][-1]
             self.assertEqual(answer['measurement']['tokens'],12)
-            self.assertGreater(answer['measurement']['tps'],0)
+            self.assertEqual(answer['measurement']['tps'],42.5)
+            self.assertEqual(answer['measurement']['measurement_kind'],'generation')
 
     def test_conversation_lifecycle_and_archive(self):
         with tempfile.TemporaryDirectory() as tmp:

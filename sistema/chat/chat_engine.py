@@ -234,13 +234,15 @@ class ChatStore:
             msgs=db.execute('SELECT id,role,content,status,created_at FROM messages WHERE conversation_id=? ORDER BY created_at ASC',(cid,)).fetchall()
             atts=db.execute('SELECT id,message_id,name,mime,size,kind,summary,created_at FROM attachments WHERE conversation_id=? ORDER BY created_at ASC',(cid,)).fetchall()
             measurements={
-                row['message_id']:{'tps':row['tps'],'tokens':row['tokens'],'elapsed':row['elapsed']}
+                row['message_id']:{'tps':row['tps'],'tokens':row['tokens'],'elapsed':row['elapsed'],
+                                   'measurement_kind':row['measurement_kind']}
                 for row in db.execute("""
                     SELECT message_id, json_extract(payload,'$.tps') AS tps,
                            json_extract(payload,'$.tokens') AS tokens,
-                           json_extract(payload,'$.elapsed') AS elapsed
+                           json_extract(payload,'$.elapsed') AS elapsed,
+                           json_extract(payload,'$.measurement_kind') AS measurement_kind
                     FROM chat_requests WHERE conversation_id=? AND status='done'
-                    AND json_extract(payload,'$.measurement_kind')='request'
+                    AND json_extract(payload,'$.measurement_kind') IN ('request','generation')
                 """,(cid,))
             }
         by_msg={}
@@ -477,7 +479,7 @@ class ChatStore:
                             raise RuntimeError('La IA está apagada o todavía está cargando en Kaggle. Encendela desde el panel y esperá el estado LISTO.')
                         if not resp.ok:
                             raise RuntimeError(f'El servidor de inferencia devolvió HTTP {resp.status_code}.')
-                        for raw_line in resp.iter_lines(decode_unicode=False):
+                        for raw_line in resp.iter_lines(chunk_size=64,decode_unicode=False):
                             if cancel_ev.is_set():
                                 next_status='cancelled';break
                             if not raw_line:continue
@@ -487,19 +489,27 @@ class ChatStore:
                             if data_str=='[DONE]':break
                             try:chunk=json.loads(data_str)
                             except ValueError:continue
+                            if chunk.get('error'):
+                                raise RuntimeError('El motor interrumpió la generación.')
                             usage_obj=chunk.get('usage') or {}
                             choices=chunk.get('choices') or []
-                            piece=choices[0].get('delta',{}).get('content') if choices else None
+                            delta=choices[0].get('delta',{}) if choices else {}
+                            piece=delta.get('content')
                             tokens=usage_obj.get('completion_tokens')
                             with self.lock:
+                                if delta.get('reasoning_content') or delta.get('reasoning'):
+                                    state['thinking']=True
                                 if piece:
+                                    state['thinking']=False
                                     if len(state['content'].encode('utf8'))+len(piece.encode('utf8'))>max_out*16:raise ValueError('La respuesta superó el límite de tamaño reservado.')
                                     state['content']+=piece
                                 if type(tokens) is int and tokens>0:
                                     elapsed=time.perf_counter()-inference_started
                                     if elapsed>0:
-                                        state.update(tokens=tokens,tps=round(tokens/elapsed,1),
-                                                     elapsed=round(elapsed,3),measurement_kind='request')
+                                        rate=usage_obj.get('completion_tokens_per_sec')
+                                        native=type(rate) in (int,float) and 0<rate<float('inf')
+                                        state.update(tokens=tokens,tps=round(rate if native else tokens/elapsed,1),
+                                                     elapsed=round(elapsed,3),measurement_kind='generation' if native else 'request')
                             self._persist_request(state)
                         break
             except Exception as exc:
@@ -541,7 +551,7 @@ class ChatStore:
     def get_request(self,req_id):
         with self.lock:
             state=self.requests.get(req_id)
-            if state:return {key:state.get(key) for key in ('id','status','content','error','title','tps','tokens','elapsed','measurement_kind','context','reserved_bytes')}
+            if state:return {key:state.get(key) for key in ('id','status','content','error','title','tps','tokens','elapsed','measurement_kind','context','reserved_bytes','thinking')}
         with self._conn() as db:row=db.execute('SELECT payload FROM chat_requests WHERE id=?',(req_id,)).fetchone()
         if not row:raise ValueError('Solicitud de generación no encontrada.')
         return json.loads(row['payload'])

@@ -43,8 +43,18 @@ class Dashboard:
                     if result.returncode:raise RuntimeError('No se pudo consultar Kaggle; revisa el token.')
                     value=json.loads(result.stdout.strip().splitlines()[-1])
                     if value['state']=='RUNNING':
-                        try:value['live']=requests.get('http://127.0.0.1:'+str(p['port'])+'/control/status',timeout=2).json()
-                        except requests.RequestException:pass
+                        url='http://127.0.0.1:'+str(p['port'])
+                        try:
+                            live=requests.get(url+'/control/status',timeout=2)
+                            live.raise_for_status()
+                            value['live']=live.json()
+                            value['live']['model_ready']=False
+                            resident=requests.get(url+'/api/ps',timeout=2)
+                            resident.raise_for_status()
+                            value['live']['model_ready']=any(
+                                m.get('name','').split(':')[0]==p['model']
+                                for m in resident.json().get('models',[]))
+                        except (requests.RequestException,ValueError):pass
                 except Exception as error:value={'state':'UNKNOWN','quota':None,'error':str(error)[:160],'checked_at':time.time()}
             with self.lock:self.snapshots[key]=value
     def monitor(self):

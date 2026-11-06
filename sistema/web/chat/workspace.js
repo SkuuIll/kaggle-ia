@@ -23,8 +23,6 @@ async function loadChatConversations(){
     renderChatList();
     if(!activeChatId&&chatConversations.length){
       await selectChatConversation(chatConversations[0].id);
-    }else if(!chatConversations.length&&page==='chat'&&!activeChatId){
-      await createChatConversation();
     }else{
       renderChatHeaderStatus();
       renderChatMessages();
@@ -67,7 +65,8 @@ async function selectChatConversation(id){
     const conversation=await r.json();
     if(selection!==chatSelection)return;
     const input=el('chat-input');
-    if(activeChatId!==id){
+    const switched=activeChatId!==id;
+    if(switched){
       if(activeChatId)chatDrafts.set(activeChatId,input.value);
       input.value=chatDrafts.get(id)||'';
       autoGrowChatInput(input);
@@ -82,7 +81,7 @@ async function selectChatConversation(id){
     el('chat-workflow-preset').value=Object.keys(WORKFLOW_PRESETS).find(key=>WORKFLOW_PRESETS[key]===promptText)||'';
     renderChatList();
     renderChatHeaderStatus();
-    renderChatMessages(true);
+    renderChatMessages(switched);
     const last=chatState.latest_request;
     showChatContext(last?.context);
     if(last?.status==='running'&&!activeRequestId){activeRequestId=last.id;chatRequestConversation=activeChatId;pollChatRequest(last.id,last.message_id);}
@@ -98,12 +97,12 @@ function renderChatHeaderStatus(){
   const acc=account(accKey);
   const pill=el('chat-gpu-pill');
   const startBtn=el('chat-quick-start');
-  const ready=acc?.state==='RUNNING'&&acc.live?.capabilities?.includes('session-v1');
+  const ready=acc?.state==='RUNNING'&&acc.live?.model_ready===true;
   let status='Elegí una cuenta configurada para usar el chat.';
   if(acc?.configured){
-    if(ready)status='Servidor conectado. Ya podés enviar mensajes.';
+    if(ready)status='';
     else if(acc.state==='QUEUED')status='Kaggle puso la sesión en cola. Podés preparar tu mensaje mientras esperás.';
-    else if(acc.state==='RUNNING')status='Kaggle está preparando el servidor. Esperando el relay de inferencia.';
+    else if(acc.state==='RUNNING')status='Kaggle está preparando el modelo. Podés escribir mientras esperás.';
     else if(busy())status='Hay una operación en curso. Podés seguirla en Actividad.';
     else if(unknown(acc))status='El estado de Kaggle todavía no se confirmó. Revisá Actividad o ejecutá el diagnóstico.';
     else status='Iniciá el servidor de esta cuenta para poder enviar el mensaje.';
@@ -111,8 +110,9 @@ function renderChatHeaderStatus(){
   if(activeRequestId&&chatRequestConversation!==activeChatId)status='Hay una respuesta en curso en otra conversación.';
   const statusNode=el('chat-connection-status');
   if(statusNode.textContent!==status)statusNode.textContent=status;
+  statusNode.hidden=!status;
   pill.className='badge '+(ready?'on':acc?.state==='ERROR'?'bad':'');
-  pill.textContent=acc?states[acc.state]||acc.state:'Sin cuenta';
+  pill.textContent=ready?'Listo':acc?.state==='RUNNING'?'Cargando':acc?states[acc.state]||acc.state:'Sin cuenta';
   el('chat-active-subtitle').textContent=acc?uiText(acc.label)+' · '+fmt(acc.context)+' de contexto':'Seleccioná una cuenta en el encabezado.';
   startBtn.hidden=!acc?.configured||active(acc);
   startBtn.disabled=busy()||!acc||unknown(acc);
@@ -122,7 +122,8 @@ function renderChatHeaderStatus(){
 
 async function changeChatAccount(newKey){
   const conversation=chatState.conversation;
-  if(!conversation||!newKey)return;
+  if(!newKey)return;
+  if(!conversation){renderChatHeaderStatus();return;}
   try{
     const updated=await post('/api/chat/rename',{id:conversation.id,account:newKey});
     if(activeChatId===conversation.id)chatState.conversation.account=updated.account;
@@ -210,6 +211,17 @@ async function diagnoseChatAccount(){
 /* File Uploads & Drag-and-Drop */
 function bindChatDropzone(){
   const more=el('chat-more');
+  const viewport=window.visualViewport;
+  if(viewport){
+    const resize=()=>{
+      const focused=document.activeElement===el('chat-input')&&viewport.scale===1;
+      document.documentElement.style.setProperty('--chat-viewport',focused?viewport.height+'px':'');
+      document.body.classList.toggle('chat-keyboard-open',focused&&viewport.height<480&&window.innerHeight-viewport.height>80);
+    };
+    viewport.addEventListener('resize',resize);
+    el('chat-input').addEventListener('focus',resize);
+    el('chat-input').addEventListener('blur',resize);
+  }
   el('chat-settings-drawer').addEventListener('close',()=>more.querySelector('summary').focus());
   more.addEventListener('click',event=>{
     if(event.target.closest('button')){
@@ -511,9 +523,11 @@ function renderChatMessages(scrollBottom=false){
     const roleLabel=isUser?`<span class="chat-msg-role user"><span class="chat-avatar-pill user">${icon('user')} Vos</span></span>`:`<span class="chat-msg-role assistant"><span class="chat-avatar-pill assistant">${icon('cpu')} Asistente</span></span>`;
     const timeStr=m.created_at?new Date(m.created_at*1000).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}):'';
     const tele=m.measurement;
-    const tpsBadge=tele&&tele.tps>0?`<span class="tps-pill" title="Promedio de la solicitud, incluida la espera y el razonamiento">${icon('activity')} ${fmt(tele.tps)} TPS promedio · ${fmt(tele.tokens)} tokens · ${fmt(tele.elapsed)} s</span>`:'';
+    const native=tele?.measurement_kind==='generation';
+    const tpsBadge=tele&&tele.tps>0?`<span class="tps-pill" title="${native?'Velocidad de generación informada por el motor':'Promedio de la solicitud, incluida la espera'}">${icon('activity')} ${fmt(tele.tps)} TPS ${native?'de generación':'promedio'} · ${fmt(tele.tokens)} tokens</span>`:'';
     const atts=(m.attachments||[]).length?`<div class="chat-att-grid">${m.attachments.map(renderAttachmentCard).join('')}</div>`:'';
-    const body=m.content?`<div class="chat-msg-body">${renderMarkdown(m.status==='error'?m.content.replace(/^\u26a0\uFE0F?\s*/,''):m.content,i)}</div>`:(m.status==='running'?'<div class="chat-msg-body muted"><i class="pulse"></i> Esperando respuesta del modelo…</div>':'');
+    const waiting=m.thinking?'El modelo está razonando…':'Esperando respuesta del modelo…';
+    const body=m.content?`<div class="chat-msg-body">${renderMarkdown(m.status==='error'?m.content.replace(/^\u26a0\uFE0F?\s*/,''):m.content,i)}</div>`:(m.status==='running'?`<div class="chat-msg-body muted"><i class="pulse"></i> ${waiting}</div>`:'');
     return `<article class="chat-msg ${esc(m.role)}"><div class="chat-msg-head">${roleLabel}<div class="chat-msg-meta">${tpsBadge}<span class="chat-time-tag">${m.status==='running'?'Generando…':timeStr}</span></div></div>${atts}${body}<div class="chat-msg-foot"><button type="button" class="chat-foot-btn" onclick="copyChatMessage(${i})">${icon('copy')}<span>Copiar</span></button>${!isUser?`<button type="button" class="chat-foot-btn" onclick="downloadChatMessage(${i})">${icon('download')}<span>Descargar .md</span></button>`:''}</div></article>`;
   }).join('');
   if(nearBottom)scroll.scrollTop=scroll.scrollHeight;
@@ -633,10 +647,12 @@ async function pollChatRequest(reqId,asstMsgId){
     if(!r.ok&&r.status!==404)throw Error('No se pudo actualizar la respuesta.');
     const st=r.ok?await r.json():{status:'interrupted',error:'La solicitud ya no está disponible.'};
     const msg=chatState.messages?.find(m=>m.id===asstMsgId);
-    if(msg){
-      msg.content=st.content||(st.error?'No se completó la respuesta: '+st.error:'');
+    const content=st.content||(st.error?'No se completó la respuesta: '+st.error:'');
+    if(msg&&(msg.content!==content||msg.status!==st.status||Boolean(msg.thinking)!==Boolean(st.thinking))){
+      msg.content=content;
       msg.status=st.status;
-      if(st.status==='done'&&st.measurement_kind==='request')msg.measurement=st;
+      msg.thinking=st.thinking;
+      if(st.status==='done'&&st.measurement_kind)msg.measurement=st;
       renderChatMessages();
     }
     if(st.status==='running'){
