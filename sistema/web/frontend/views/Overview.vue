@@ -17,6 +17,21 @@
     </article>
     <div class="section-heading dashboard-section">
       <div>
+        <h2>Servidores</h2>
+        <p class="hint">Elegí una cuenta para iniciar, diagnosticar o conectar tus clientes.</p>
+      </div>
+      <div class="buttons">
+        <button type="button" class="quiet" onclick="navigate('cuentas')">
+          Administrar cuentas <i data-icon="arrow"></i>
+        </button>
+        <button type="button" class="danger operation" data-stop="true" onclick="stopAll()">
+          <i data-icon="stop"></i> Apagar todas
+        </button>
+      </div>
+    </div>
+    <div id="model-cards" class="cards"></div>
+    <div class="section-heading dashboard-section">
+      <div>
         <h2>Uso y cuota</h2>
         <p class="hint">Consumo informado por Kaggle y solicitudes registradas por el proxy.</p>
       </div>
@@ -50,21 +65,6 @@
         <div class="caption" id="kpi-requests-note">A través de la conexión medida</div>
       </article>
     </div>
-    <div class="section-heading dashboard-section">
-      <div>
-        <h2>Servidores</h2>
-        <p class="hint">Elegí una cuenta para iniciar, diagnosticar o conectar tus clientes.</p>
-      </div>
-      <div class="buttons">
-      <button type="button" class="quiet" onclick="navigate('cuentas')">
-        Administrar cuentas <i data-icon="arrow"></i>
-      </button>
-        <button type="button" class="danger operation" data-stop="true" onclick="stopAll()">
-          <i data-icon="stop"></i> Apagar todas
-        </button>
-      </div>
-    </div>
-    <div id="model-cards" class="cards"></div>
     <div class="split">
       <article class="panel">
         <div class="panel-title">

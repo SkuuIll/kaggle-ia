@@ -103,7 +103,38 @@ let powerSubmission=null;
 const visibleJob=()=>latest?.pending_job||latest?.job;
 const account=k=>latest?.accounts.find(a=>a.key===k),name=a=>a.nickname||a.username||'Cuenta '+a.account,active=a=>['RUNNING','QUEUED'].includes(a.state),unknown=a=>['UNKNOWN','CHECKING'].includes(a.state),busy=()=>Boolean(powerSubmission)||visibleJob()?.status==='running';
 function html(id,value){const n=el(id);if(n&&n.innerHTML!==value&&!n.contains(document.activeElement))n.innerHTML=value;}
-function badge(a){return `<span class="badge ${active(a)?'on':unknown(a)||a.state==='ERROR'?'bad':a.configured?'good':''}">${esc(states[a.state]||a.state)}</span>`;}
+function accountPowerJob(a){
+  const job=powerSubmission||visibleJob();
+  return a?.configured&&job?.status==='running'&&powerActions.has(job.action)&&
+    (job.action==='stop_all'||job.key===a.key)?job:null;
+}
+
+function gpuStatus(a){
+  const job=accountPowerJob(a);
+  if(job)return [describePower(job)[0],'pending'];
+  if(!a?.configured)return ['Sin cuenta',''];
+  if(a.state==='RUNNING')return a.live?.model_ready===true?['GPU lista','on']:['Cargando modelo','pending'];
+  if(a.state==='QUEUED')return ['En cola','pending'];
+  if(unknown(a)||a.state==='ERROR')return [states[a.state]||a.state,'bad'];
+  return [states[a.state]||a.state,''];
+}
+
+function badge(a){
+  const [label,tone]=gpuStatus(a);
+  return `<span class="badge ${tone}">${esc(label)}</span>`;
+}
+
+function gpuControl(a){
+  const job=accountPowerJob(a);
+  const stopping=job&&job.action!=='start';
+  const stop=active(a)||unknown(a);
+  const action=stop?'stop':'start';
+  const label=stop?'Apagar':'Encender';
+  const disabled=stop?stopping||powerSubmission:busy();
+  const control=stopping||(!stop&&job)?'':`<button type="button" class="${stop?'danger':'primary'}" aria-label="${label} ${esc(name(a))}" onclick="${action}Account('${esc(a.key)}')" ${disabled?'disabled':''}>${icon(stop?'stop':'play')}${label}</button>`;
+  const progress=job?`<span class="gpu-action-progress">${esc(describePower(job)[1])}</span>`:'';
+  return `<div class="gpu-action">${progress}${control}</div>`;
+}
 function toast(message,error=false){clearTimeout(toastTimer);el('toast').textContent=message;el('toast').className='toast'+(error?' error':'');el('toast').hidden=false;toastTimer=setTimeout(()=>el('toast').hidden=true,error?8000:4500);}
 function navigate(value){
   if(!(value in pages))value='dashboard';
@@ -129,6 +160,8 @@ async function act(action,key=null,extra={},showActivity=false){
   if(power){
     powerSubmission={action,key,status:'running',stage:'submitting',started_at:Date.now()/1000};
     renderJob();
+    renderDashboard();
+    renderAccounts();
     renderChatHeaderStatus();
   }
   try{
@@ -141,6 +174,8 @@ async function act(action,key=null,extra={},showActivity=false){
     if(power){
       powerSubmission=null;
       renderJob();
+      renderDashboard();
+      renderAccounts();
       renderChatHeaderStatus();
     }
     toast(e.message,true);
@@ -196,7 +231,7 @@ function render(){
   if(!clientDefaultSet&&configured.length){el('client-account').value=(configured.find(active)||configured[0]).key;clientDefaultSet=true;}
   if(clientConfig&&clientConfig.profile_key!==el('client-account').value)clearClientConfig();
   renderLaunchConsole();
-  loadModel();loadTimers();renderDashboard();renderAccounts();renderHistory();renderJob();renderConnection();renderChatHeaderStatus();
+  loadModel();loadTimers();renderJob();renderDashboard();renderAccounts();renderHistory();renderConnection();renderChatHeaderStatus();
   el('installation-mode').textContent=latest.server_mode==='vps'?'Servidor en la VPS. Los clientes usan HTTPS; Kaggle se conecta al relay por SSH.':'Controlador local en esta PC.';
   el('open-paseo').hidden=latest.server_mode==='vps';
   document.querySelectorAll('.operation').forEach(b=>b.disabled=(busy()&&!b.dataset.stop)||b.dataset.unavailable==='true');
@@ -229,7 +264,7 @@ function renderDashboard(){
   html('quota-list',accounts.length?accounts.map(a=>{const q=a.quota,p=q?.allowed_seconds?100*((q.used_seconds||0)+(q.reserved_seconds||0))/q.allowed_seconds:0;return `<div class="quota"><div class="quota-head"><b>${esc(name(a))}</b><small>${hours(q?.used_seconds)} / ${hours(q?.allowed_seconds)}</small></div><div class="bar" role="img" aria-label="${esc(name(a))}: ${p.toFixed(1)} por ciento utilizado o reservado"><i class="${p>=80?'warn':''}" style="width:${Math.max(0,Math.min(100,p))}%"></i></div><div class="quota-foot"><span>${q?'Renueva '+(q.refresh?new Date(q.refresh).toLocaleDateString('es-AR'):'sin fecha'):'Cuota sin confirmar'}</span><strong>${hours(q?.available_seconds)} libres</strong></div>${q?.reserved_seconds?`<p class="hint">${hours(q.reserved_seconds)} reservadas</p>`:''}</div>`;}).join(''):'<div class="empty">Agregá una cuenta para consultar su cuota.</div>');
   html('model-cards',accounts.length?accounts.map(a=>{
     const tm=modelTelemetry(a);
-    return `<article class="model-card"><div class="card-head"><div><div class="account-name">${esc(name(a))}</div><div class="account-caption">Conexión ${a.account}${a.username?' · @'+esc(a.username):''}</div></div>${badge(a)}</div><div class="model-label">${esc(uiText(a.label))}</div><div class="chips"><span class="chip tps">${icon('activity')} ${esc(tm.tps)}</span><span class="chip">${esc(uiText(tm.arch))}</span><span class="chip">${fmt(a.context)} ctx</span><span class="chip">${esc(a.filename.match(/Q[0-9][A-Z0-9_]*/i)?.[0]||'GGUF')}</span><span class="chip">${hours(a.quota?.available_seconds)} libres</span></div><div class="card-quick-actions"><button onclick="openChatForAccount('${a.key}')">${icon('chat')}Chatear</button><button onclick="openModelsForAccount('${a.key}')">${icon('cpu')}Cambiar / TPS</button><button onclick="quickDiagnose('${a.key}')">${icon('shield')}Diagnosticar</button><button onclick="openClientSetupForAccount('${a.key}')">${icon('code')}Clientes IDE</button></div><div class="card-foot"><small>${a.live&&!a.live.error?'Canal de control disponible':'FlashAttention + KV Q8_0'}</small><div class="buttons"><button class="operation" data-stop="true" onclick="stopAccount('${a.key}')">${icon('stop')}Apagar</button><button class="primary operation" data-unavailable="${active(a)}" onclick="startAccount('${a.key}')" ${active(a)?'disabled':''}>${icon('play')}Encender</button></div></div></article>`;
+    return `<article class="model-card"><div class="card-head"><div><div class="account-name">${esc(name(a))}</div><div class="account-caption">Conexión ${a.account}${a.username?' · @'+esc(a.username):''}</div></div>${badge(a)}</div><div class="model-label">${esc(uiText(a.label))}</div><div class="chips"><span class="chip tps">${icon('activity')} ${esc(tm.tps)}</span><span class="chip">${esc(uiText(tm.arch))}</span><span class="chip">${fmt(a.context)} ctx</span><span class="chip">${esc(a.filename.match(/Q[0-9][A-Z0-9_]*/i)?.[0]||'GGUF')}</span><span class="chip">${hours(a.quota?.available_seconds)} libres</span></div><div class="card-quick-actions"><button onclick="openChatForAccount('${a.key}')">${icon('chat')}Chatear</button><button onclick="openModelsForAccount('${a.key}')">${icon('cpu')}Cambiar / TPS</button><button onclick="quickDiagnose('${a.key}')">${icon('shield')}Diagnosticar</button><button onclick="openClientSetupForAccount('${a.key}')">${icon('code')}Clientes IDE</button></div><div class="card-foot"><small>${a.live&&!a.live.error?'Canal de control disponible':'FlashAttention + KV Q8_0'}</small>${gpuControl(a)}</div></article>`;
   }).join(''):'<article class="panel empty"><b>Tu próximo modelo empieza acá.</b>Conectá una API de Kaggle para preparar tu espacio.<br><button class="primary operation" style="margin-top:15px" onclick="openAccount()">Agregar cuenta</button></article>');
 }
 
@@ -259,7 +294,7 @@ async function quickDiagnose(key){
 }
 
 function renderChart(accounts){const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setUTCDate(d.getUTCDate()-6+i);return {day:d.toISOString().slice(0,10),input:0,output:0,requests:0};});for(const a of accounts)for(const row of a.daily||[]){const d=days.find(d=>d.day===row.day);if(d){d.input+=row.input_tokens;d.output+=row.output_tokens;d.requests+=row.requests;}}const max=Math.max(1,...days.map(d=>d.input+d.output)),left=43,plot=590,base=198,height=158;let svg='<svg viewBox="0 0 660 235" role="img" aria-labelledby="chart-title"><title id="chart-title">Tokens de entrada y salida medidos en los últimos siete días</title>';for(let i=0;i<=4;i++){const y=base-i*height/4;svg+=`<line x1="${left}" x2="633" y1="${y}" y2="${y}" stroke="rgba(255,255,255,0.06)"/><text x="34" y="${y+3}" text-anchor="end" fill="#8b95a7" font-size="9">${Math.round(max*i/4).toLocaleString('es-AR')}</text>`;}days.forEach((d,i)=>{const x=left+i*plot/7+plot/14-14,hIn=d.input/max*height,hOut=d.output/max*height;svg+=`<g><title>${d.day}: ${fmt(d.input)} entrada, ${fmt(d.output)} salida; ${fmt(d.requests)} solicitudes</title><rect x="${x}" y="${base-hIn}" width="28" height="${hIn}" rx="3" fill="#60a5fa"/><rect x="${x}" y="${base-hIn-hOut}" width="28" height="${hOut}" rx="3" fill="#334155"/></g><text x="${x+14}" y="220" text-anchor="middle" fill="#8b95a7" font-size="9">${d.day.slice(8)}/${d.day.slice(5,7)}</text>`;});html('usage-chart',svg+'</svg>');const requests=days.reduce((n,d)=>n+d.requests,0);el('chart-note').textContent=requests?`${fmt(requests)} solicitudes en el período. Los días vacíos muestran cero solicitudes registradas.`:'Todavía no hay solicitudes medidas en este período. El gráfico se completa con uso real.';}
-function renderAccounts(){if(!latest)return;const search=el('account-search').value.toLowerCase(),configured=latest.accounts.filter(a=>a.configured),accounts=configured.filter(a=>(name(a)+' '+a.username+' '+a.label).toLowerCase().includes(search));el('accounts-empty').hidden=configured.length>0;html('account-rows',accounts.map(a=>{const tm=modelTelemetry(a);return `<tr><td><b>${esc(name(a))}</b><small>@${esc(a.username||'sin usuario')} · Conexión ${a.account}</small></td><td>${badge(a)}</td><td><div class="table-model" title="${esc(uiText(a.label))}">${esc(uiText(a.label))}</div><small>${icon('activity')} ${esc(tm.tps)} · ${fmt(a.context)} tokens ctx</small></td><td><b>${hours(a.quota?.available_seconds)}</b><small>${a.quota?'Cuota de Kaggle':'Sin confirmar'}</small></td><td><div class="row-actions"><button class="icon-btn" title="Chatear con esta cuenta" onclick="openChatForAccount('${a.key}')">${icon('chat')}</button><button class="icon-btn operation" data-unavailable="${active(a)}" aria-label="Encender ${esc(name(a))}" title="Encender" onclick="startAccount('${a.key}')" ${active(a)?'disabled':''}>${icon('play')}</button><button class="icon-btn operation" data-stop="true" aria-label="Apagar ${esc(name(a))}" title="Apagar" onclick="stopAccount('${a.key}')">${icon('stop')}</button><button class="icon-btn operation" aria-label="Actualizar API de ${esc(name(a))}" title="Actualizar API" onclick="openAccount('${a.key}')">${icon('shield')}</button><button class="icon-btn operation" aria-label="Renombrar ${esc(name(a))}" title="Cambiar nombre" onclick="renameAccount('${a.key}')">${icon('edit')}</button><button class="icon-btn danger operation" aria-label="Quitar ${esc(name(a))}" title="Quitar cuenta" onclick="removeAccount('${a.key}')">${icon('trash')}</button></div></td></tr>`;}).join('')||(configured.length?'<tr><td colspan="5" class="empty">No hay cuentas que coincidan con la búsqueda.</td></tr>':''));}
+function renderAccounts(){if(!latest)return;const search=el('account-search').value.toLowerCase(),configured=latest.accounts.filter(a=>a.configured),accounts=configured.filter(a=>(name(a)+' '+a.username+' '+a.label).toLowerCase().includes(search));el('accounts-empty').hidden=configured.length>0;html('account-rows',accounts.map(a=>{const tm=modelTelemetry(a);return `<tr><td><b>${esc(name(a))}</b><small>@${esc(a.username||'sin usuario')} · Conexión ${a.account}</small></td><td>${badge(a)}</td><td><div class="table-model" title="${esc(uiText(a.label))}">${esc(uiText(a.label))}</div><small>${icon('activity')} ${esc(tm.tps)} · ${fmt(a.context)} tokens ctx</small></td><td><b>${hours(a.quota?.available_seconds)}</b><small>${a.quota?'Cuota de Kaggle':'Sin confirmar'}</small></td><td><div class="row-actions"><button class="icon-btn" title="Chatear con esta cuenta" onclick="openChatForAccount('${a.key}')">${icon('chat')}</button>${gpuControl(a)}<button class="icon-btn operation" aria-label="Actualizar API de ${esc(name(a))}" title="Actualizar API" onclick="openAccount('${a.key}')">${icon('shield')}</button><button class="icon-btn operation" aria-label="Renombrar ${esc(name(a))}" title="Cambiar nombre" onclick="renameAccount('${a.key}')">${icon('edit')}</button><button class="icon-btn danger operation" aria-label="Quitar ${esc(name(a))}" title="Quitar cuenta" onclick="removeAccount('${a.key}')">${icon('trash')}</button></div></td></tr>`;}).join('')||(configured.length?'<tr><td colspan="5" class="empty">No hay cuentas que coincidan con la búsqueda.</td></tr>':''));}
 function eventRows(events){return events.length?events.map(e=>`<div class="event"><span class="event-icon ${e.status==='error'?'bad':''}">${icon(e.status==='error'?'x':'check')}</span><div class="event-main">${esc(actions[e.action]||'Operación del panel')}<small>${e.profile?'Conexión '+(account(e.profile)?.account||'')+' · ':''}${e.status==='done'?'Completada':'No se completó; revisá el resultado'}${e.detail?' · '+esc(e.detail):''}</small></div><time datetime="${new Date(e.timestamp*1000).toISOString()}">${new Date(e.timestamp*1000).toLocaleString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</time></div>`).join(''):'<div class="empty"><b>Todavía no hay operaciones registradas.</b>Los inicios, apagados y cambios aparecerán acá.</div>';}
 function renderHistory(){if(!latest)return;const filter=el('history-filter').value,events=latest.history||[];html('recent-events',eventRows(events.slice(0,4)));const filtered=events.filter(e=>filter==='all'||e.status===filter);html('operation-history',filtered.length||filter==='all'?eventRows(filtered):'<div class="empty"><b>No hay operaciones con este resultado.</b>Podés cambiar el filtro para ver las demás.</div>');}
 function describePower(job){
@@ -285,6 +320,18 @@ function setJobText(id,text){
   if(node.textContent!==text)node.textContent=text;
 }
 
+function renderJobStages(job){
+  const node=el('job-stages');
+  node.hidden=!powerActions.has(job.action);
+  if(node.hidden)return;
+  const start=job.action==='start';
+  const stages=start?['Solicitud','Cola de Kaggle','Carga del modelo','GPU lista']:
+    ['Solicitud','Verificación en Kaggle','Apagado confirmado'];
+  const stageIndex={queued:1,loading:2,confirming_stop:1};
+  const current=job.status==='done'?stages.length-1:stageIndex[job.stage]??0;
+  html('job-stages',stages.map((label,index)=>`<li ${index===current?'aria-current="step"':''}><span aria-hidden="true">${index+1}</span>${label}</li>`).join(''));
+}
+
 function renderJob(){
   const serverJob=visibleJob();
   const submitted=powerSubmission;
@@ -306,6 +353,7 @@ function renderJob(){
   setJobText('jobtitle',title);
   el('job-pulse').hidden=!running;
   setJobText('job-note',note);
+  renderJobStages(j);
   const node=el('progress'),text=j.lines?.length?j.lines.join('\n'):'Todavía no hay registros para esta operación.';
   if(node.textContent!==text){
     const bottom=node.scrollHeight-node.scrollTop-node.clientHeight<30;

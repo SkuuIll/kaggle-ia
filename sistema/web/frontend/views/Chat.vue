@@ -107,24 +107,31 @@
             </details>
           </div>
         </header>
-        <div class="chat-session-bar">
-          <div class="chat-account-field">
-            <label for="chat-account">Cuenta de Kaggle</label>
-            <select id="chat-account" onchange="changeChatAccount(this.value)">
-              <option value="">Elegí una cuenta</option>
-            </select>
-          </div>
-          <div class="chat-gpu-controls" aria-label="Control de GPU">
+        <details id="chat-server-details" class="chat-server-details">
+          <summary>
+            <i data-icon="cpu"></i>
+            <span id="chat-server-account">Cuenta de Kaggle</span>
             <span id="chat-gpu-pill" class="badge" role="status">Consultando GPU…</span>
-            <button id="chat-quick-start" type="button" class="primary" onclick="startChatAccount()" hidden>
-              <i data-icon="play"></i>Encender
-            </button>
-            <button id="chat-quick-stop" type="button" class="danger" onclick="stopChatAccount()" hidden>
-              <i data-icon="stop"></i>Apagar
-            </button>
-            <button type="button" class="quiet" onclick="navigate('actividad')">Actividad</button>
+            <i data-icon="chevron-down"></i>
+          </summary>
+          <div class="chat-session-bar">
+            <div class="chat-account-field">
+              <label for="chat-account">Cuenta de Kaggle</label>
+              <select id="chat-account" onchange="changeChatAccount(this.value)">
+                <option value="">Elegí una cuenta</option>
+              </select>
+            </div>
+            <div class="chat-gpu-controls" aria-label="Control de GPU">
+              <button id="chat-quick-start" type="button" class="primary" onclick="startChatAccount()" hidden>
+                <i data-icon="play"></i>Encender
+              </button>
+              <button id="chat-quick-stop" type="button" class="danger" onclick="stopChatAccount()" hidden>
+                <i data-icon="stop"></i>Apagar
+              </button>
+              <button type="button" class="quiet" onclick="navigate('actividad')">Actividad</button>
+            </div>
           </div>
-        </div>
+        </details>
 
         <dialog id="chat-settings-drawer" class="chat-drawer" aria-labelledby="chat-settings-title">
           <div class="chat-drawer-inner">
