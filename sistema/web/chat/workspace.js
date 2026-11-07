@@ -43,6 +43,7 @@ function editChatDraft(input){
 }
 let creatingChat=false,uploadingChatFiles=false,sendingChatMessage=false,chatSelection=0,chatRequestConversation=null;
 let chatConversations=[],activeChatId=null,chatState={conversation:null,messages:[]},pendingAttachments=[],activeRequestId=null,chatPollTimer=null,codeBlocksStore=[];
+const DEFAULT_CHAT_OUTPUT=8192;
 
 async function loadChatConversations(){
   const status=el('chat-history-status');
@@ -234,16 +235,22 @@ function toggleChatSettings(){
   const drawer=el('chat-settings-drawer');
   if(drawer.open){drawer.close();return;}
   el('chat-reasoning-effort').value=localStorage.getItem('chat-reasoning-effort')||'';
+  el('chat-max-tokens').value=localStorage.getItem('chat-max-tokens')||DEFAULT_CHAT_OUTPUT;
   drawer.showModal();
   loadChatStorage();
 }
 
 async function saveChatSettings(){
-  if(!activeChatId)return;
+  const output=el('chat-max-tokens');
+  if(!output.reportValidity())return;
   try{
     const sys=el('chat-system-prompt').value.trim();
-    const updated=await post('/api/chat/rename',{id:activeChatId,system_prompt:sys});
-    if(chatState.conversation)chatState.conversation.system_prompt=updated.system_prompt;
+    const conversation=activeChatId;
+    if(conversation){
+      const updated=await post('/api/chat/rename',{id:conversation,system_prompt:sys});
+      if(activeChatId===conversation)chatState.conversation.system_prompt=updated.system_prompt;
+    }
+    localStorage.setItem('chat-max-tokens',output.value);
     localStorage.setItem('chat-reasoning-effort',el('chat-reasoning-effort').value);
     el('chat-settings-drawer').close();
     toast('Ajustes del chat guardados.');
@@ -434,13 +441,15 @@ function renderCodeBlock(info,code,files,closed,heading){
   </article>`;
 }
 
-function renderPartialCode(info,code,files,streaming){
+function renderPartialCode(info,code,files,streaming,allowRetry){
   if(streaming)return renderCodeBlock(info,code,files,false);
   if(!files)return '<pre><code>'+esc(code)+'</code></pre>';
-  return '<details class="chat-code-file"><summary>Ver código incompleto</summary><pre><code>'+esc(code)+'</code></pre></details>';
+  return '<div class="chat-code-file"><div class="chat-file-incomplete"><strong>Archivo incompleto</strong>'+
+    (allowRetry?'<button type="button" onclick="prepareFileRetry()">Pedir archivo completo</button>':'')+
+    '</div><details><summary>Ver código incompleto</summary><pre><code>'+esc(code)+'</code></pre></details></div>';
 }
 
-function renderMarkdown(text,{files=false,streaming=false}={}){
+function renderMarkdown(text,{files=false,streaming=false,allowRetry=false}={}){
   if(!text)return '';
   let thinkHtml='';
   let content=String(text);
@@ -457,7 +466,7 @@ function renderMarkdown(text,{files=false,streaming=false}={}){
   }
   if(files&&/^\s*(?:<!doctype\s+html\b[^>]*>|<html(?:\s|>))/i.test(content)){
     const complete=/<\/html>\s*$/i.test(content);
-    return thinkHtml+(complete&&!streaming?renderCodeBlock('html',content,files,true):renderPartialCode('html',content,files,streaming));
+    return thinkHtml+(complete&&!streaming?renderCodeBlock('html',content,files,true):renderPartialCode('html',content,files,streaming,allowRetry));
   }
   let out=thinkHtml,prose='',fence=null;
   for(const line of content.split(/(?<=\n)/)){
@@ -477,7 +486,7 @@ function renderMarkdown(text,{files=false,streaming=false}={}){
       prose+=line;
     }
   }
-  if(fence)return out+renderPartialCode(fence.info,fence.code,files,streaming);
+  if(fence)return out+renderPartialCode(fence.info,fence.code,files,streaming,allowRetry);
   return out+formatProse(prose);
 }
 
@@ -657,7 +666,7 @@ function renderChatMessages(scrollBottom=false){
     const tpsBadge=tele&&tele.tps>0?`<span class="tps-pill" title="${native?'Velocidad de generación informada por el motor':'Promedio de la solicitud, incluida la espera'}">${icon('activity')} ${fmt(tele.tps)} TPS ${native?'de generación':'promedio'} · ${fmt(tele.tokens)} tokens</span>`:'';
     const atts=(m.attachments||[]).length?`<div class="chat-att-grid">${m.attachments.map(renderAttachmentCard).join('')}</div>`:'';
     const waiting=m.thinking?'El modelo está razonando…':'Esperando respuesta del modelo…';
-    const body=m.content?`<div class="chat-msg-body">${renderMarkdown(m.status==='error'?m.content.replace(/^\u26a0\uFE0F?\s*/,''):m.content,{files:!isUser,streaming:m.status==='running'})}</div>`:(m.status==='running'?`<div class="chat-msg-body muted"><i class="pulse"></i> ${waiting}</div>`:'');
+    const body=m.content?`<div class="chat-msg-body">${renderMarkdown(m.status==='error'?m.content.replace(/^\u26a0\uFE0F?\s*/,''):m.content,{files:!isUser,streaming:m.status==='running',allowRetry:!isUser&&i===msgs.length-1})}</div>`:(m.status==='running'?`<div class="chat-msg-body muted"><i class="pulse"></i> ${waiting}</div>`:'');
     return `<article class="chat-msg ${esc(m.role)}"><div class="chat-msg-head">${roleLabel}<div class="chat-msg-meta">${tpsBadge}<span class="chat-time-tag">${m.status==='running'?'Generando…':timeStr}</span></div></div>${atts}${body}<div class="chat-msg-foot"><button type="button" class="chat-foot-btn" onclick="copyChatMessage(${i})">${icon('copy')}<span>Copiar</span></button>${!isUser?`<button type="button" class="chat-foot-btn" onclick="downloadChatMessage(${i})">${icon('download')}<span>Descargar .md</span></button>`:''}</div></article>`;
   }).join('');
   if(nearBottom)scroll.scrollTop=scroll.scrollHeight;
@@ -725,6 +734,17 @@ function handleChatKey(e){
   }
 }
 
+const FILE_RETRY_PROMPT='Volvé a entregar el archivo que quedó cortado, completo desde el principio y en un bloque de código con su lenguaje. Conservá todos los requisitos de mi pedido original. Priorizá el archivo sobre la explicación.';
+
+function prepareFileRetry(){
+  const input=el('chat-input');
+  if(input.value.trim()&&input.value!==FILE_RETRY_PROMPT){
+    toast('Ya tenés un borrador. Enviá o guardá ese texto antes de pedir el archivo completo.');
+    return;
+  }
+  fillChatStarter(FILE_RETRY_PROMPT);
+}
+
 async function sendChatMessage(){
   if(el('chat-send-btn').disabled||sendingChatMessage)return;
   const input=el('chat-input');
@@ -740,6 +760,7 @@ async function sendChatMessage(){
     if(!activeChatId)await createChatConversation();
     const conversation=activeChatId;
     if(!conversation)return;
+    const configuredOutput=Number(localStorage.getItem('chat-max-tokens'))||DEFAULT_CHAT_OUTPUT;
     const res=await post('/api/chat/send',{
       conversation,
       account:chatState.conversation.account,
@@ -747,7 +768,7 @@ async function sendChatMessage(){
       attachments:pendingAttachments.map(a=>a.id),
       temperature:Number(el('chat-temperature')?.value||0.2),
       reasoning_effort:localStorage.getItem('chat-reasoning-effort')||undefined,
-      max_tokens:Number(el('chat-max-tokens')?.value||4096)
+      max_tokens:content===FILE_RETRY_PROMPT?Math.max(configuredOutput,16384):configuredOutput
     });
     if(chatDrafts.get(conversation)===draft)storeChatDraft(conversation,'');
     activeRequestId=res.request_id;

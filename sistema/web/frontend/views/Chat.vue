@@ -186,7 +186,8 @@
               </div>
               <div class="field" style="margin-bottom: 0">
                 <label for="chat-max-tokens">Máximo de tokens de respuesta</label>
-                <input id="chat-max-tokens" type="number" step="256" min="256" max="32768" value="4096" />
+                <input id="chat-max-tokens" type="number" step="256" min="256" max="32768" value="8192" required />
+                <p class="hint">Para un archivo largo, probá con 16.384 tokens.</p>
               </div>
             </div>
             <div class="field">
